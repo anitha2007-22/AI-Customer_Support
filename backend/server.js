@@ -42,7 +42,7 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
-app.use('/api/auth', require('./routes/auth'));
+app.use('/auth', require('./routes/auth'));
 app.use('/api/tickets', require('./routes/ticket'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/notifications', require('./routes/notification'));
@@ -53,8 +53,8 @@ app.get('/api/health', (req, res) => {
 });
 
 // 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
+app.get("/", (req, res) => {
+  res.send("Backend is running...")
 });
 
 // Global error handler
