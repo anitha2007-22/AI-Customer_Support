@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — SupportDesk</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+    .auth-split { display: flex; min-height: 100vh; width: 100%; }
+    .auth-visual {
+      flex: 1;
+      background: linear-gradient(135deg, #065F46 0%, #047857 50%, #0D9488 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 48px; color: white; position: relative; overflow: hidden;
+    }
+    .auth-visual::before { content: ''; position: absolute; width: 500px; height: 500px; border-radius: 50%; background: rgba(255,255,255,0.04); top: -150px; right: -150px; }
+    .auth-visual-content { z-index: 1; text-align: center; }
+    .auth-visual-logo { font-size: 56px; margin-bottom: 24px; }
+    .auth-visual h2 { font-size: 32px; font-weight: 800; margin-bottom: 12px; }
+    .auth-visual p { font-size: 16px; opacity: 0.75; max-width: 360px; }
+    .auth-form-side { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px; }
+    .auth-form-wrapper { width: 100%; max-width: 440px; }
+    .auth-header { margin-bottom: 28px; }
+    .auth-header h1 { font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+    .auth-header p { color: var(--text-secondary); font-size: 15px; }
+    .role-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+    .role-option { display: none; }
+    .role-option + label {
+      display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      cursor: pointer; transition: all 0.2s; font-size: 14px; font-weight: 500;
+    }
+    .role-option:checked + label { border-color: var(--primary); background: var(--primary-ghost); color: var(--primary); }
+    .auth-footer { margin-top: 20px; text-align: center; font-size: 14px; color: var(--text-secondary); }
+    .auth-footer a { color: var(--primary); font-weight: 600; }
+    .password-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-muted); font-size: 16px; }
+    .input-wrapper { position: relative; }
+    .password-strength { height: 4px; border-radius: 2px; margin-top: 6px; background: var(--border); overflow: hidden; }
+    .password-strength-bar { height: 100%; border-radius: 2px; transition: all 0.3s; }
+    @media (max-width: 768px) { .auth-visual { display: none; } .auth-form-side { padding: 32px 24px; } }
+  </style>
+</head>
+<body>
+<div class="auth-split">
+  <div class="auth-visual">
+    <div class="auth-visual-content">
+      <div class="auth-visual-logo">🚀</div>
+      <h2>Join SupportDesk</h2>
+      <p>Create your account and start managing support tickets with the power of AI.</p>
+    </div>
+  </div>
+
+  <div class="auth-form-side">
+    <div class="auth-form-wrapper">
+      <div class="auth-header">
+        <h1>Create account</h1>
+        <p>Get started with SupportDesk today</p>
+      </div>
+
+      <form id="registerForm">
+        <div class="form-group">
+          <label class="form-label">Account type <span class="req">*</span></label>
+          <div class="role-selector">
+            <div>
+              <input type="radio" name="role" id="role-customer" value="customer" class="role-option" checked>
+              <label for="role-customer">👤 Customer</label>
+            </div>
+            <div>
+              <input type="radio" name="role" id="role-agent" value="agent" class="role-option">
+              <label for="role-agent">🛠️ Agent</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="name">Full name <span class="req">*</span></label>
+          <input type="text" id="name" class="form-control" placeholder="Jane Smith" required autocomplete="name">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="email">Email address <span class="req">*</span></label>
+          <input type="email" id="email" class="form-control" placeholder="you@example.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password <span class="req">*</span></label>
+          <div class="input-wrapper">
+            <input type="password" id="password" class="form-control" placeholder="At least 6 characters" required minlength="6" oninput="checkPasswordStrength(this.value)">
+            <span class="password-toggle" onclick="togglePassword('password',this)">👁️</span>
+          </div>
+          <div class="password-strength"><div class="password-strength-bar" id="strengthBar"></div></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirmPassword">Confirm password <span class="req">*</span></label>
+          <div class="input-wrapper">
+            <input type="password" id="confirmPassword" class="form-control" placeholder="Repeat your password" required>
+            <span class="password-toggle" onclick="togglePassword('confirmPassword',this)">👁️</span>
+          </div>
+        </div>
+
+        <div id="registerError" class="form-error" style="margin-bottom:12px;display:none"></div>
+        <button type="submit" id="registerBtn" class="btn btn-primary" style="width:100%;padding:12px;font-size:15px">
+          Create Account
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        Already have an account? <a href="login.html">Sign in →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+  Auth.redirectIfLoggedIn();
+  Theme.init();
+
+  function togglePassword(id, icon) {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+    icon.textContent = input.type === 'password' ? '👁️' : '🙈';
+  }
+
+  function checkPasswordStrength(val) {
+    const bar = document.getElementById('strengthBar');
+    let score = 0;
+    if (val.length >= 6) score++;
+    if (val.length >= 10) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/[0-9]/.test(val)) score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+    const colors = ['#EF4444','#F59E0B','#F59E0B','#10B981','#10B981'];
+    const widths = ['20%','40%','60%','80%','100%'];
+    bar.style.width = widths[Math.min(score,4)] || '0%';
+    bar.style.background = colors[Math.min(score,4)] || 'transparent';
+  }
+
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('registerBtn');
+    const errorEl = document.getElementById('registerError');
+    errorEl.style.display = 'none';
+
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const role = document.querySelector('input[name="role"]:checked').value;
+
+    if (password !== confirmPassword) {
+      errorEl.textContent = 'Passwords do not match.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading"></span> Creating account...';
+
+    const res = await API.register({ name, email, password, role });
+
+    if (res?.ok) {
+      Auth.setSession(res.data.token, res.data.user);
+      Toast.success('Account created!', 'Redirecting to your dashboard...');
+      setTimeout(() => Auth.redirectToDashboard(res.data.user.role), 800);
+    } else {
+      errorEl.textContent = res?.data?.message || 'Registration failed. Please try again.';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Create Account';
+    }
+  });
+</script>
+</body>
+</html>

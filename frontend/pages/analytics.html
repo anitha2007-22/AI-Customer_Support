@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics — SupportDesk</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar-root"></aside>
+  <div class="main-content">
+    <header class="topbar" id="topbar-root"></header>
+    <main class="page-content">
+
+      <!-- KPI Cards -->
+      <div class="stats-grid" id="kpiGrid">
+        <div class="stat-card loading-skeleton" style="height:120px"></div>
+        <div class="stat-card loading-skeleton" style="height:120px"></div>
+        <div class="stat-card loading-skeleton" style="height:120px"></div>
+        <div class="stat-card loading-skeleton" style="height:120px"></div>
+        <div class="stat-card loading-skeleton" style="height:120px"></div>
+        <div class="stat-card loading-skeleton" style="height:120px"></div>
+      </div>
+
+      <!-- Ticket Trends Line Chart (full width) -->
+      <div class="chart-card" style="margin-bottom:20px">
+        <div class="card-header">
+          <div>
+            <div class="card-title">📈 Ticket Volume Trends</div>
+            <div class="card-subtitle">Daily ticket creation over the last 30 days</div>
+          </div>
+        </div>
+        <div style="height:260px"><canvas id="trendChart"></canvas></div>
+      </div>
+
+      <!-- Row: Category + Priority + Sentiment -->
+      <div class="charts-grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
+        <div class="chart-card">
+          <div class="card-header">
+            <div class="card-title">📂 Tickets by Category</div>
+          </div>
+          <div style="height:220px"><canvas id="categoryChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="card-header">
+            <div class="card-title">🚦 Tickets by Priority</div>
+          </div>
+          <div style="height:220px"><canvas id="priorityChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="card-header">
+            <div class="card-title">😊 Sentiment Distribution</div>
+          </div>
+          <div style="height:220px"><canvas id="sentimentChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Status Distribution + Agent Resolution -->
+      <div class="charts-grid" style="grid-template-columns:1fr 2fr;margin-top:20px">
+        <div class="chart-card">
+          <div class="card-header">
+            <div class="card-title">🔄 Status Breakdown</div>
+          </div>
+          <div style="height:240px"><canvas id="statusChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="card-header">
+            <div class="card-title">🛠️ Agent Resolution Rates</div>
+          </div>
+          <div style="height:240px"><canvas id="agentChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- SLA Compliance -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <div>
+            <div class="card-title">⏱️ SLA Compliance</div>
+            <div class="card-subtitle">Current SLA status across all open tickets</div>
+          </div>
+        </div>
+        <div id="slaCompliance">
+          <div style="padding:32px;text-align:center;color:var(--text-muted)">Loading SLA data...</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  initPage('admin', 'Analytics');
+  let charts = {};
+
+  async function loadAnalytics() {
+    const [statsRes, agentsRes, slaRes] = await Promise.all([
+      API.getStats(),
+      API.getAgentPerformance(),
+      API.getSLAReport(),
+    ]);
+
+    if (statsRes?.ok) renderKPIs(statsRes.data.data);
+    if (statsRes?.ok) renderCharts(statsRes.data.data, agentsRes?.data?.data || []);
+    if (slaRes?.ok) renderSLACompliance(slaRes.data.data);
+  }
+
+  function renderKPIs(data) {
+    const { tickets, sla, avgResolutionHours, avgSatisfaction } = data;
+    const resolution = tickets.totalTickets > 0
+      ? Math.round(((tickets.resolvedTickets + tickets.closedTickets) / tickets.totalTickets) * 100)
+      : 0;
+
+    document.getElementById('kpiGrid').innerHTML = [
+      { label: 'Total Tickets', value: tickets.totalTickets, icon: '🎫', color: '#4F46E5', bg: '#EEF2FF' },
+      { label: 'Open', value: tickets.openTickets, icon: '📂', color: '#3B82F6', bg: '#DBEAFE' },
+      { label: 'Resolved', value: tickets.resolvedTickets + tickets.closedTickets, icon: '✅', color: '#10B981', bg: '#D1FAE5' },
+      { label: 'Critical', value: tickets.criticalTickets, icon: '🚨', color: '#EF4444', bg: '#FEE2E2' },
+      { label: 'Avg Resolution', value: `${avgResolutionHours}h`, icon: '⏱️', color: '#F59E0B', bg: '#FEF3C7' },
+      { label: 'Satisfaction', value: avgSatisfaction ? `${avgSatisfaction}/5` : 'N/A', icon: '⭐', color: '#EC4899', bg: '#FCE7F3' },
+    ].map(s => `
+      <div class="stat-card" style="--card-accent:${s.color};--card-accent-bg:${s.bg}">
+        <div class="stat-icon">${s.icon}</div>
+        <div class="stat-value">${s.value}</div>
+        <div class="stat-label">${s.label}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderCharts(data, agents) {
+    Object.values(charts).forEach(c => c?.destroy());
+
+    // Trend
+    const trendCtx = document.getElementById('trendChart');
+    if (trendCtx && data.ticketTrends?.length) {
+      charts.trend = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+          labels: data.ticketTrends.map(t => t._id.slice(5)),
+          datasets: [{
+            label: 'Tickets Created',
+            data: data.ticketTrends.map(t => t.count),
+            borderColor: '#4F46E5',
+            backgroundColor: 'rgba(79,70,229,0.08)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#4F46E5',
+            pointRadius: 4,
+            pointHoverRadius: 6,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#94A3B8', maxTicksLimit: 10 } },
+            y: { grid: { color: 'rgba(148,163,184,0.1)' }, ticks: { color: '#94A3B8', stepSize: 1 }, beginAtZero: true },
+          },
+        },
+      });
+    }
+
+    // Category doughnut
+    const catCtx = document.getElementById('categoryChart');
+    if (catCtx && data.ticketsByCategory?.length) {
+      charts.category = createPieChart(catCtx,
+        data.ticketsByCategory.map(c => c._id),
+        data.ticketsByCategory.map(c => c.count)
+      );
+    }
+
+    // Priority bar
+    const prioCtx = document.getElementById('priorityChart');
+    if (prioCtx && data.ticketsByPriority?.length) {
+      const order = ['Low','Medium','High','Critical'];
+      const sorted = order.map(p => data.ticketsByPriority.find(x => x._id === p) || { _id: p, count: 0 });
+      charts.priority = createBarChart(prioCtx,
+        sorted.map(p => p._id),
+        [{
+          data: sorted.map(p => p.count),
+          backgroundColor: ['#10B981','#F59E0B','#EF4444','#7C3AED'],
+          borderRadius: 8,
+          label: 'Tickets',
+        }]
+      );
+    }
+
+    // Sentiment doughnut
+    const sentCtx = document.getElementById('sentimentChart');
+    if (sentCtx && data.sentimentDist?.length) {
+      charts.sentiment = createPieChart(sentCtx,
+        data.sentimentDist.map(s => s._id),
+        data.sentimentDist.map(s => s.count),
+        data.sentimentDist.map(s => ({ Positive: '#10B981', Neutral: '#94A3B8', Negative: '#EF4444' }[s._id] || '#94A3B8'))
+      );
+    }
+
+    // Status doughnut
+    const statusCtx = document.getElementById('statusChart');
+    if (statusCtx) {
+      const { tickets } = data;
+      charts.status = createPieChart(statusCtx,
+        ['Open', 'In Progress', 'Pending', 'Resolved', 'Closed'],
+        [tickets.openTickets, tickets.inProgressTickets, tickets.pendingTickets, tickets.resolvedTickets, tickets.closedTickets],
+        ['#3B82F6','#8B5CF6','#F59E0B','#10B981','#94A3B8']
+      );
+    }
+
+    // Agent bar chart
+    const agentCtx = document.getElementById('agentChart');
+    if (agentCtx && agents.length) {
+      charts.agent = new Chart(agentCtx, {
+        type: 'bar',
+        data: {
+          labels: agents.map(a => a.name.split(' ')[0]),
+          datasets: [
+            {
+              label: 'Assigned',
+              data: agents.map(a => a.assignedTickets),
+              backgroundColor: 'rgba(79,70,229,0.6)',
+              borderRadius: 6,
+            },
+            {
+              label: 'Resolved',
+              data: agents.map(a => a.resolvedTickets),
+              backgroundColor: 'rgba(16,185,129,0.8)',
+              borderRadius: 6,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#94A3B8' } },
+            y: { grid: { color: 'rgba(148,163,184,0.1)' }, ticks: { color: '#94A3B8', stepSize: 1 }, beginAtZero: true },
+          },
+        },
+      });
+    }
+  }
+
+  function renderSLACompliance(sla) {
+    const container = document.getElementById('slaCompliance');
+    container.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-bottom:20px">
+        <div style="padding:20px;background:var(--danger-light);border-radius:var(--radius-md);text-align:center">
+          <div style="font-size:36px;font-weight:800;color:var(--danger)">${sla.overdueCount}</div>
+          <div style="font-size:14px;color:var(--text-secondary);font-weight:600">Overdue (SLA Breached)</div>
+        </div>
+        <div style="padding:20px;background:var(--warning-light);border-radius:var(--radius-md);text-align:center">
+          <div style="font-size:36px;font-weight:800;color:var(--warning)">${sla.warningCount}</div>
+          <div style="font-size:14px;color:var(--text-secondary);font-weight:600">Warning (< 4 hours left)</div>
+        </div>
+      </div>
+      ${sla.overdueTickets.length > 0 ? `
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--danger);margin-bottom:10px">🚨 Overdue Tickets</div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Ticket ID</th><th>Title</th><th>Customer</th><th>Agent</th><th>Overdue Since</th></tr></thead>
+              <tbody>
+                ${sla.overdueTickets.map(t => `
+                  <tr onclick="window.location='ticket-detail.html?id=${t._id}'" style="cursor:pointer">
+                    <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--danger)">${t.ticketId}</span></td>
+                    <td style="font-weight:500">${escapeHtml(t.title)}</td>
+                    <td>${escapeHtml(t.customerId?.name || '—')}</td>
+                    <td>${escapeHtml(t.assignedAgent?.name || 'Unassigned')}</td>
+                    <td style="color:var(--danger);font-size:12px">${formatDateTime(t.sla.dueDate)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : '<div style="text-align:center;color:var(--success);font-weight:600;padding:20px">✅ No overdue tickets — great SLA compliance!</div>'}
+    `;
+  }
+
+  loadAnalytics();
+</script>
+</body>
+</html>

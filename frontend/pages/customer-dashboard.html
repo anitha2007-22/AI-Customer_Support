@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Dashboard — SupportDesk</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar-root"></aside>
+  <div class="main-content">
+    <header class="topbar" id="topbar-root"></header>
+    <main class="page-content">
+
+      <!-- Welcome Banner -->
+      <div class="card" style="background:linear-gradient(135deg,var(--primary),var(--accent));color:white;border:none;margin-bottom:24px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+          <div>
+            <h2 style="font-size:22px;font-weight:800;margin-bottom:4px">Welcome back, <span id="welcomeName">—</span> 👋</h2>
+            <p style="opacity:0.85;font-size:14px">Track your support tickets and get help faster with AI.</p>
+          </div>
+          <a href="create-ticket.html" class="btn" style="background:white;color:var(--primary);font-weight:700;padding:10px 20px">
+            ➕ New Ticket
+          </a>
+        </div>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-bottom:24px" id="customerStats">
+        <div class="stat-card loading-skeleton" style="height:110px"></div>
+        <div class="stat-card loading-skeleton" style="height:110px"></div>
+        <div class="stat-card loading-skeleton" style="height:110px"></div>
+        <div class="stat-card loading-skeleton" style="height:110px"></div>
+      </div>
+
+      <!-- Recent Tickets -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">My Tickets</div>
+            <div class="card-subtitle">Your recent support requests</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <a href="tickets.html" class="btn btn-secondary btn-sm">View All</a>
+            <a href="create-ticket.html" class="btn btn-primary btn-sm">+ New</a>
+          </div>
+        </div>
+
+        <div id="myTickets">
+          <div style="padding:32px;text-align:center;color:var(--text-muted)">Loading your tickets...</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  initPage('customer', 'My Dashboard');
+  const user = Auth.getUser();
+  document.getElementById('welcomeName').textContent = user?.name?.split(' ')[0] || 'there';
+
+  async function loadCustomerDashboard() {
+    const res = await API.getTickets({ limit: 20 });
+    if (!res?.ok) return;
+
+    const tickets = res.data.data;
+    const open = tickets.filter(t => t.status === 'Open').length;
+    const inProgress = tickets.filter(t => t.status === 'In Progress').length;
+    const resolved = tickets.filter(t => ['Resolved','Closed'].includes(t.status)).length;
+    const total = tickets.length;
+
+    document.getElementById('customerStats').innerHTML = `
+      <div class="stat-card" style="--card-accent:#4F46E5;--card-accent-bg:#EEF2FF">
+        <div class="stat-icon">🎫</div>
+        <div class="stat-value">${total}</div>
+        <div class="stat-label">Total Tickets</div>
+      </div>
+      <div class="stat-card" style="--card-accent:#3B82F6;--card-accent-bg:#DBEAFE">
+        <div class="stat-icon">📂</div>
+        <div class="stat-value">${open}</div>
+        <div class="stat-label">Open</div>
+      </div>
+      <div class="stat-card" style="--card-accent:#8B5CF6;--card-accent-bg:#EDE9FE">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-value">${inProgress}</div>
+        <div class="stat-label">In Progress</div>
+      </div>
+      <div class="stat-card" style="--card-accent:#10B981;--card-accent-bg:#D1FAE5">
+        <div class="stat-icon">✅</div>
+        <div class="stat-value">${resolved}</div>
+        <div class="stat-label">Resolved</div>
+      </div>
+    `;
+
+    if (!tickets.length) {
+      document.getElementById('myTickets').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🎫</div>
+          <h3>No tickets yet</h3>
+          <p>Create your first support ticket and our team will help you right away.</p>
+          <a href="create-ticket.html" class="btn btn-primary">Create First Ticket</a>
+        </div>
+      `;
+      return;
+    }
+
+    document.getElementById('myTickets').innerHTML = tickets.slice(0, 10).map(t => `
+      <div class="ticket-card priority-${t.priority.toLowerCase()}" onclick="window.location='ticket-detail.html?id=${t._id}'">
+        <div class="ticket-card-header">
+          <div>
+            <div class="ticket-card-id">${t.ticketId}</div>
+            <div class="ticket-card-title">${escapeHtml(t.title)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+            ${getStatusBadge(t.status)}
+            ${getPriorityBadge(t.priority)}
+          </div>
+        </div>
+        <div class="ticket-card-desc">${escapeHtml(t.description)}</div>
+        <div class="ticket-card-meta">
+          <span style="font-size:12px;color:var(--text-muted)">📂 ${t.category}</span>
+          <span style="font-size:12px;color:var(--text-muted)">·</span>
+          <span style="font-size:12px;color:var(--text-muted)">🕐 ${timeAgo(t.createdAt)}</span>
+          ${t.assignedAgent ? `<span style="font-size:12px;color:var(--text-muted)">· 🛠️ ${escapeHtml(t.agentName || 'Assigned')}</span>` : ''}
+          ${t.messages?.length ? `<span style="margin-left:auto;font-size:12px;color:var(--primary);font-weight:600">💬 ${t.messages.filter(m=>!m.isInternal).length}</span>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  loadCustomerDashboard();
+</script>
+</body>
+</html>

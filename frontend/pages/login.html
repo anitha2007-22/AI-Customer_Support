@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — SupportDesk</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+    .auth-split { display: flex; min-height: 100vh; width: 100%; }
+    .auth-visual {
+      flex: 1;
+      background: linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #1E40AF 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 48px; color: white; position: relative; overflow: hidden;
+    }
+    .auth-visual::before {
+      content: ''; position: absolute; width: 500px; height: 500px; border-radius: 50%;
+      background: rgba(255,255,255,0.04); top: -150px; right: -150px;
+    }
+    .auth-visual::after {
+      content: ''; position: absolute; width: 300px; height: 300px; border-radius: 50%;
+      background: rgba(79,70,229,0.2); bottom: -80px; left: -80px;
+    }
+    .auth-visual-content { z-index: 1; text-align: center; }
+    .auth-visual-logo { font-size: 56px; margin-bottom: 24px; }
+    .auth-visual h2 { font-size: 32px; font-weight: 800; margin-bottom: 12px; }
+    .auth-visual p { font-size: 16px; opacity: 0.75; max-width: 360px; }
+    .auth-features { margin-top: 40px; display: flex; flex-direction: column; gap: 16px; text-align: left; }
+    .auth-feature { display: flex; align-items: center; gap: 12px; font-size: 14px; opacity: 0.85; }
+    .auth-feature-icon { width: 36px; height: 36px; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .auth-form-side {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 48px; max-width: 520px;
+    }
+    .auth-form-wrapper { width: 100%; max-width: 420px; }
+    .auth-header { margin-bottom: 32px; }
+    .auth-header h1 { font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+    .auth-header p { color: var(--text-secondary); font-size: 15px; }
+    .auth-footer { margin-top: 24px; text-align: center; font-size: 14px; color: var(--text-secondary); }
+    .auth-footer a { color: var(--primary); font-weight: 600; }
+    .demo-accounts { background: var(--primary-ghost); border: 1px solid rgba(79,70,229,0.2); border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px; }
+    .demo-accounts h4 { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 10px; }
+    .demo-btn { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; background: white; border: 1px solid var(--border); font-size: 12px; cursor: pointer; width: 100%; margin-bottom: 6px; transition: all 0.2s; }
+    .demo-btn:hover { border-color: var(--primary); }
+    .demo-btn:last-child { margin-bottom: 0; }
+    .demo-role { font-weight: 700; color: var(--primary); min-width: 60px; }
+    .password-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-muted); font-size: 16px; }
+    .input-wrapper { position: relative; }
+    @media (max-width: 768px) { .auth-visual { display: none; } .auth-form-side { max-width: 100%; padding: 32px 24px; } }
+  </style>
+</head>
+<body>
+<div class="auth-split">
+  <!-- Visual Side -->
+  <div class="auth-visual">
+    <div class="auth-visual-content">
+      <div class="auth-visual-logo">🎫</div>
+      <h2>SupportDesk</h2>
+      <p>AI-powered customer support that resolves tickets 10× faster.</p>
+      <div class="auth-features">
+        <div class="auth-feature">
+          <div class="auth-feature-icon">🤖</div>
+          <span>AI auto-categorization & priority detection</span>
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon">💬</div>
+          <span>Gemini-powered response suggestions</span>
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon">📊</div>
+          <span>Real-time analytics & SLA tracking</span>
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon">🔔</div>
+          <span>Instant notifications for every update</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Side -->
+  <div class="auth-form-side">
+    <div class="auth-form-wrapper">
+      <div class="auth-header">
+        <h1>Welcome back</h1>
+        <p>Sign in to your SupportDesk account</p>
+      </div>
+
+      <!-- Demo Account Buttons -->
+      <div class="demo-accounts">
+        <h4>🚀 Quick Demo Login</h4>
+        <button class="demo-btn" onclick="fillDemo('admin@support.com','admin123')">
+          <span class="demo-role">Admin</span> admin@support.com / admin123
+        </button>
+        <button class="demo-btn" onclick="fillDemo('sarah@support.com','agent123')">
+          <span class="demo-role">Agent</span> sarah@support.com / agent123
+        </button>
+        <button class="demo-btn" onclick="fillDemo('alice@example.com','customer123')">
+          <span class="demo-role">Customer</span> alice@example.com / customer123
+        </button>
+      </div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="form-label" for="email">Email address <span class="req">*</span></label>
+          <input type="email" id="email" class="form-control" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Password <span class="req">*</span></label>
+          <div class="input-wrapper">
+            <input type="password" id="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+            <span class="password-toggle" onclick="togglePassword('password',this)">👁️</span>
+          </div>
+        </div>
+        <div id="loginError" class="form-error" style="margin-bottom:12px;display:none"></div>
+        <button type="submit" id="loginBtn" class="btn btn-primary" style="width:100%;padding:12px;font-size:15px">
+          Sign In
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        Don't have an account? <a href="register.html">Create one →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+  // Redirect if already logged in
+  Auth.redirectIfLoggedIn();
+  Theme.init();
+
+  function fillDemo(email, password) {
+    document.getElementById('email').value = email;
+    document.getElementById('password').value = password;
+  }
+
+  function togglePassword(id, icon) {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+    icon.textContent = input.type === 'password' ? '👁️' : '🙈';
+  }
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const errorEl = document.getElementById('loginError');
+    errorEl.style.display = 'none';
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading"></span> Signing in...';
+
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    const res = await API.login({ email, password });
+
+    if (res?.ok) {
+      Auth.setSession(res.data.token, res.data.user);
+      Toast.success('Welcome back!', `Logged in as ${res.data.user.name}`);
+      setTimeout(() => Auth.redirectToDashboard(res.data.user.role), 500);
+    } else {
+      errorEl.textContent = res?.data?.message || 'Login failed. Please try again.';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+    }
+  });
+</script>
+</body>
+</html>

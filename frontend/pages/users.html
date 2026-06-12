@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Users — SupportDesk</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar-root"></aside>
+  <div class="main-content">
+    <header class="topbar" id="topbar-root"></header>
+    <main class="page-content">
+
+      <!-- Stats row -->
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px" id="userStats">
+        <div class="stat-card loading-skeleton" style="height:100px"></div>
+        <div class="stat-card loading-skeleton" style="height:100px"></div>
+        <div class="stat-card loading-skeleton" style="height:100px"></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+          <div class="search-bar" style="flex:1;min-width:200px">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" class="form-control" placeholder="Search by name or email..." oninput="debounceSearch()">
+          </div>
+          <select id="roleFilter" class="form-control" style="width:auto" onchange="loadUsers()">
+            <option value="">All Roles</option>
+            <option value="customer">Customer</option>
+            <option value="agent">Agent</option>
+            <option value="admin">Admin</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="clearFilters()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Users Table -->
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Department</th>
+              <th>Status</th>
+              <th>Joined</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="pagination" class="pagination"></div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Edit User</h3>
+      <span class="modal-close" onclick="Modal.close('editModal')">✕</span>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editUserId">
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <select id="editRole" class="form-control">
+          <option value="customer">Customer</option>
+          <option value="agent">Agent</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Department</label>
+        <select id="editDept" class="form-control">
+          <option value="">None</option>
+          <option value="Technical Support">Technical Support</option>
+          <option value="Billing">Billing</option>
+          <option value="Account Management">Account Management</option>
+          <option value="General Support">General Support</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Account Status</label>
+        <select id="editActive" class="form-control">
+          <option value="true">Active</option>
+          <option value="false">Deactivated</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('editModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Delete User</h3>
+      <span class="modal-close" onclick="Modal.close('deleteModal')">✕</span>
+    </div>
+    <div class="modal-body">
+      <p>Are you sure you want to permanently delete <strong id="deleteUserName"></strong>? This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('deleteModal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Delete User</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  initPage('admin', 'User Management');
+
+  let currentPage = 1;
+  let deleteUserId = null;
+  let searchTimer;
+
+  function debounceSearch() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(loadUsers, 400);
+  }
+
+  function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('roleFilter').value = '';
+    currentPage = 1;
+    loadUsers();
+  }
+
+  async function loadUsers() {
+    const params = {
+      page: currentPage,
+      limit: 15,
+      search: document.getElementById('searchInput').value.trim(),
+      role: document.getElementById('roleFilter').value,
+    };
+    Object.keys(params).forEach(k => !params[k] && delete params[k]);
+
+    const res = await API.getUsers(params);
+    if (!res?.ok) return;
+
+    const { data: users, total } = res.data;
+    const pages = Math.ceil(total / 15);
+
+    // Render stats first time
+    if (currentPage === 1) loadUserStats(res.data);
+
+    const body = document.getElementById('usersTableBody');
+    if (!users.length) {
+      body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">No users found</td></tr>';
+      return;
+    }
+
+    body.innerHTML = users.map(u => `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="avatar avatar-sm" style="background:${getRoleColor(u.role)}">
+              ${u.profileImage ? `<img src="http://localhost:5000${u.profileImage}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : getInitials(u.name)}
+            </div>
+            <span style="font-weight:600">${escapeHtml(u.name)}</span>
+          </div>
+        </td>
+        <td style="color:var(--text-secondary)">${escapeHtml(u.email)}</td>
+        <td>
+          <span class="badge" style="background:${getRoleColor(u.role)}20;color:${getRoleColor(u.role)}">
+            ${getRoleIcon(u.role)} ${u.role.charAt(0).toUpperCase()+u.role.slice(1)}
+          </span>
+        </td>
+        <td style="color:var(--text-muted);font-size:13px">${escapeHtml(u.department || '—')}</td>
+        <td>
+          <span class="badge" style="background:${u.isActive ? 'var(--success-light)' : 'var(--danger-light)'};color:${u.isActive ? 'var(--success)' : 'var(--danger)'}">
+            ${u.isActive ? '● Active' : '○ Inactive'}
+          </span>
+        </td>
+        <td style="color:var(--text-muted);font-size:13px">${formatDate(u.createdAt)}</td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary btn-sm" onclick="openEditModal('${u._id}','${u.role}','${u.department||''}','${u.isActive}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${u._id}','${escapeHtml(u.name)}')">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    renderPagination(pages);
+  }
+
+  async function loadUserStats(data) {
+    const users = data.data;
+    const admins = users.filter(u => u.role === 'admin').length;
+    const agents = users.filter(u => u.role === 'agent').length;
+    const customers = users.filter(u => u.role === 'customer').length;
+
+    document.getElementById('userStats').innerHTML = `
+      <div class="stat-card" style="--card-accent:#4F46E5;--card-accent-bg:#EEF2FF">
+        <div class="stat-icon">👤</div>
+        <div class="stat-value">${data.total}</div>
+        <div class="stat-label">Total Users</div>
+      </div>
+      <div class="stat-card" style="--card-accent:#06B6D4;--card-accent-bg:#CFFAFE">
+        <div class="stat-icon">🛠️</div>
+        <div class="stat-value">${agents}</div>
+        <div class="stat-label">Agents</div>
+      </div>
+      <div class="stat-card" style="--card-accent:#10B981;--card-accent-bg:#D1FAE5">
+        <div class="stat-icon">🧑</div>
+        <div class="stat-value">${customers}</div>
+        <div class="stat-label">Customers</div>
+      </div>
+    `;
+  }
+
+  function getRoleColor(role) {
+    return { admin: '#EF4444', agent: '#06B6D4', customer: '#4F46E5' }[role] || '#94A3B8';
+  }
+
+  function getRoleIcon(role) {
+    return { admin: '⚙️', agent: '🛠️', customer: '👤' }[role] || '';
+  }
+
+  function openEditModal(id, role, dept, isActive) {
+    document.getElementById('editUserId').value = id;
+    document.getElementById('editRole').value = role;
+    document.getElementById('editDept').value = dept;
+    document.getElementById('editActive').value = isActive;
+    Modal.open('editModal');
+  }
+
+  async function saveUser() {
+    const id = document.getElementById('editUserId').value;
+    const role = document.getElementById('editRole').value;
+    const department = document.getElementById('editDept').value;
+    const isActive = document.getElementById('editActive').value === 'true';
+
+    const res = await API.updateUser(id, { role, department, isActive });
+    if (res?.ok) {
+      Toast.success('User updated!');
+      Modal.close('editModal');
+      loadUsers();
+    } else {
+      Toast.error('Failed', res?.data?.message || 'Could not update user');
+    }
+  }
+
+  function openDeleteModal(id, name) {
+    deleteUserId = id;
+    document.getElementById('deleteUserName').textContent = name;
+    Modal.open('deleteModal');
+  }
+
+  async function confirmDelete() {
+    const res = await API.deleteUser(deleteUserId);
+    if (res?.ok) {
+      Toast.success('User deleted');
+      Modal.close('deleteModal');
+      loadUsers();
+    } else {
+      Toast.error('Failed', res?.data?.message || 'Could not delete user');
+    }
+  }
+
+  function renderPagination(totalPages) {
+    const pag = document.getElementById('pagination');
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+    let html = `<button class="page-btn" onclick="goToPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+    for (let i = 1; i <= totalPages; i++) {
+      html += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goToPage(${i})">${i}</button>`;
+    }
+    html += `<button class="page-btn" onclick="goToPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+    pag.innerHTML = html;
+  }
+
+  function goToPage(page) { currentPage = page; loadUsers(); }
+
+  loadUsers();
+</script>
+</body>
+</html>

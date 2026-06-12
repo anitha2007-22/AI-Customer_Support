@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — SupportDesk</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar-root"></aside>
+  <div class="main-content">
+    <header class="topbar" id="topbar-root"></header>
+    <main class="page-content">
+
+      <div style="max-width:720px;margin:0 auto">
+
+        <!-- Appearance -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title" style="margin-bottom:20px">🎨 Appearance</div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)">
+            <div>
+              <div style="font-weight:600">Dark Mode</div>
+              <div style="font-size:13px;color:var(--text-muted)">Switch between light and dark interface</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="darkModeToggle" onchange="toggleTheme(this)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div style="padding:14px 0">
+            <div style="font-weight:600;margin-bottom:12px">Color Accent</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <div class="color-option active" data-color="indigo" style="--c:#4F46E5" onclick="selectColor(this)"></div>
+              <div class="color-option" data-color="blue" style="--c:#3B82F6" onclick="selectColor(this)"></div>
+              <div class="color-option" data-color="violet" style="--c:#8B5CF6" onclick="selectColor(this)"></div>
+              <div class="color-option" data-color="cyan" style="--c:#06B6D4" onclick="selectColor(this)"></div>
+              <div class="color-option" data-color="emerald" style="--c:#10B981" onclick="selectColor(this)"></div>
+              <div class="color-option" data-color="rose" style="--c:#F43F5E" onclick="selectColor(this)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title" style="margin-bottom:20px">🔔 Notifications</div>
+
+          <div id="notifSettings">
+            <div style="padding:14px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-weight:600">New Ticket</div>
+                <div style="font-size:13px;color:var(--text-muted)">When a new support ticket is created</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="padding:14px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-weight:600">Ticket Assigned</div>
+                <div style="font-size:13px;color:var(--text-muted)">When a ticket is assigned to you</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="padding:14px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-weight:600">New Message</div>
+                <div style="font-size:13px;color:var(--text-muted)">When a message is added to your ticket</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="padding:14px 0;display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-weight:600">SLA Alerts</div>
+                <div style="font-size:13px;color:var(--text-muted)">When a ticket is approaching its deadline</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title" style="margin-bottom:20px">👤 Account</div>
+
+          <div style="padding:14px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-weight:600">Profile Settings</div>
+              <div style="font-size:13px;color:var(--text-muted)">Manage your name, avatar, and preferences</div>
+            </div>
+            <a href="profile.html" class="btn btn-secondary btn-sm">Manage →</a>
+          </div>
+
+          <div style="padding:14px 0;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-weight:600">Sign Out</div>
+              <div style="font-size:13px;color:var(--text-muted)">Log out of your SupportDesk account</div>
+            </div>
+            <button class="btn btn-danger btn-sm logout-btn">Sign Out</button>
+          </div>
+        </div>
+
+        <!-- About -->
+        <div class="card" style="text-align:center;padding:32px">
+          <div style="font-size:40px;margin-bottom:12px">🎫</div>
+          <div style="font-size:20px;font-weight:800;margin-bottom:4px">SupportDesk</div>
+          <div style="font-size:14px;color:var(--text-muted);margin-bottom:16px">Version 1.0.0 — AI-Powered Customer Support Platform</div>
+          <div style="font-size:13px;color:var(--text-muted)">
+            Built with Node.js, Express, MongoDB, Google Gemini AI, and Chart.js
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<style>
+  .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; inset: 0;
+    background: var(--border); border-radius: 24px; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute;
+    width: 18px; height: 18px; left: 3px; top: 3px;
+    background: white; border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+  .toggle-switch input:checked + .toggle-slider { background: var(--primary); }
+  .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+  .color-option {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--c);
+    cursor: pointer; border: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .color-option:hover { transform: scale(1.15); }
+  .color-option.active { border-color: var(--text-primary); transform: scale(1.1); }
+</style>
+
+<script src="../js/app.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  const user = Auth.getUser();
+  initPage(user?.role || 'customer', 'Settings');
+
+  // Sync dark mode toggle
+  const isDark = localStorage.getItem('sd_theme') === 'dark';
+  document.getElementById('darkModeToggle').checked = isDark;
+
+  function toggleTheme(checkbox) {
+    Theme.apply(checkbox.checked ? 'dark' : 'light');
+  }
+
+  function selectColor(el) {
+    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('active'));
+    el.classList.add('active');
+    // In a full implementation this would update CSS variables
+    Toast.info('Color theme', `Switched to ${el.dataset.color}`);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ticket Detail — SupportDesk</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar-root"></aside>
+  <div class="main-content">
+    <header class="topbar" id="topbar-root"></header>
+    <main class="page-content">
+
+      <div id="pageContent">
+        <div style="padding:60px;text-align:center;color:var(--text-muted)">
+          <div class="spinner" style="margin:0 auto 16px"></div>
+          Loading ticket...
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Assign Agent Modal (Admin) -->
+<div class="modal-overlay" id="assignModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Assign Ticket</h3>
+      <span class="modal-close" onclick="Modal.close('assignModal')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Select Agent</label>
+        <select id="agentSelect" class="form-control">
+          <option value="">Loading agents...</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('assignModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="assignTicket()">Assign</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rate Ticket Modal -->
+<div class="modal-overlay" id="rateModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Rate Your Experience</h3>
+      <span class="modal-close" onclick="Modal.close('rateModal')">✕</span>
+    </div>
+    <div class="modal-body" style="text-align:center">
+      <p style="color:var(--text-secondary);margin-bottom:20px">How satisfied are you with the resolution?</p>
+      <div class="star-rating" style="justify-content:center;font-size:36px" id="starRating">
+        <span class="star" onclick="setRating(1)">★</span>
+        <span class="star" onclick="setRating(2)">★</span>
+        <span class="star" onclick="setRating(3)">★</span>
+        <span class="star" onclick="setRating(4)">★</span>
+        <span class="star" onclick="setRating(5)">★</span>
+      </div>
+      <p id="ratingLabel" style="margin-top:12px;font-size:14px;color:var(--text-muted)">Click a star to rate</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('rateModal')">Skip</button>
+      <button class="btn btn-primary" id="submitRatingBtn" disabled onclick="submitRating()">Submit Rating</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const ticketId = urlParams.get('id');
+  let ticket = null;
+  let currentRating = 0;
+  let selectedMsgFiles = [];
+
+  if (!ticketId) window.location.href = 'tickets.html';
+
+  const user = Auth.getUser();
+  if (Auth.redirectIfNotLoggedIn()) {}
+  const role = user?.role || 'customer';
+  initPage(role, 'Ticket Detail');
+
+  async function loadTicket() {
+    const res = await API.getTicket(ticketId);
+    if (!res?.ok) {
+      document.getElementById('pageContent').innerHTML = `
+        <div class="empty-state"><div class="empty-state-icon">❌</div><h3>Ticket not found</h3><a href="tickets.html" class="btn btn-primary">Back to Tickets</a></div>
+      `;
+      return;
+    }
+    ticket = res.data.data;
+    renderTicket();
+  }
+
+  function renderTicket() {
+    const t = ticket;
+    const isAdmin = role === 'admin';
+    const isAgent = role === 'agent';
+    const isCustomer = role === 'customer';
+    const canEdit = isCustomer && t.isEditable;
+    const sla = getSLAStatus(t.sla?.dueDate, t.status);
+    const isResolved = ['Resolved','Closed'].includes(t.status);
+    const publicMessages = t.messages.filter(m => !m.isInternal || isAgent || isAdmin);
+
+    document.getElementById('pageContent').innerHTML = `
+      <!-- Back + Header -->
+      <div style="margin-bottom:20px">
+        <a href="tickets.html" style="color:var(--text-muted);font-size:13px;display:inline-flex;align-items:center;gap:6px;margin-bottom:12px">← Back to Tickets</a>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+              <span style="font-family:var(--font-mono);font-size:13px;color:var(--primary);background:var(--primary-ghost);padding:3px 10px;border-radius:20px">${t.ticketId}</span>
+              ${getStatusBadge(t.status)}
+              ${getPriorityBadge(t.priority)}
+            </div>
+            <h1 style="font-size:22px;font-weight:800;line-height:1.3">${escapeHtml(t.title)}</h1>
+            <div style="color:var(--text-muted);font-size:13px;margin-top:6px">
+              Created ${formatDateTime(t.createdAt)} by <strong>${escapeHtml(t.customerName || '—')}</strong>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="openAssignModal()">👤 Assign Agent</button>` : ''}
+            ${(isAdmin || isAgent) ? `
+              <select class="form-control" style="width:auto;font-size:13px" onchange="updateStatus(this.value)">
+                <option value="">Change Status...</option>
+                <option value="Open" ${t.status==='Open'?'selected':''}>Open</option>
+                <option value="In Progress" ${t.status==='In Progress'?'selected':''}>In Progress</option>
+                <option value="Pending" ${t.status==='Pending'?'selected':''}>Pending</option>
+                <option value="Resolved" ${t.status==='Resolved'?'selected':''}>Resolved</option>
+                <option value="Closed" ${t.status==='Closed'?'selected':''}>Closed</option>
+              </select>
+            ` : ''}
+            ${isResolved && isCustomer && !t.satisfactionRating ? `<button class="btn btn-warning btn-sm" onclick="Modal.open('rateModal')">⭐ Rate Support</button>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;align-items:start">
+        <!-- Left: Description + Messages -->
+        <div>
+          <!-- Description -->
+          <div class="card" style="margin-bottom:16px">
+            <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Description</h3>
+            <p style="color:var(--text-secondary);line-height:1.8;white-space:pre-wrap">${escapeHtml(t.description)}</p>
+            ${t.attachments?.length ? `
+              <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+                <div style="font-size:13px;font-weight:600;margin-bottom:8px">Attachments</div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px">
+                  ${t.attachments.map(a => `
+                    <a href="http://localhost:5000${a}" target="_blank" class="file-chip" style="text-decoration:none">
+                      📎 ${a.split('/').pop()}
+                    </a>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Message Thread -->
+          <div class="card" style="margin-bottom:16px">
+            <h3 style="font-size:15px;font-weight:700;margin-bottom:20px">Conversation (${publicMessages.length})</h3>
+            <div class="message-thread" id="messageThread">
+              ${publicMessages.length === 0 ? `
+                <div style="text-align:center;padding:24px;color:var(--text-muted)">
+                  <div style="font-size:32px;margin-bottom:8px">💬</div>
+                  No messages yet. Be the first to respond.
+                </div>
+              ` : publicMessages.map(m => renderMessage(m)).join('')}
+            </div>
+          </div>
+
+          <!-- Reply Box -->
+          ${!isResolved ? `
+            <div class="card">
+              <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">
+                ${isCustomer ? 'Add Reply' : 'Reply to Customer'}
+              </h3>
+              
+              ${(isAgent || isAdmin) ? `
+                <div style="display:flex;gap:8px;margin-bottom:12px">
+                  <button id="replyTabBtn" class="tab-btn active" onclick="switchReplyTab('public')" style="border-bottom:2px solid var(--primary);color:var(--primary)">💬 Public Reply</button>
+                  <button id="noteTabBtn" class="tab-btn" onclick="switchReplyTab('internal')">🔒 Internal Note</button>
+                  <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="loadAISuggestion()">🤖 AI Suggest</button>
+                </div>
+              ` : ''}
+
+              <div id="aiSuggestionBox" style="display:none;margin-bottom:12px;padding:12px;background:var(--primary-ghost);border:1px solid rgba(79,70,229,0.2);border-radius:var(--radius-md)">
+                <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:6px">🤖 AI Suggestion</div>
+                <p id="aiSuggestionText" style="font-size:14px;color:var(--text-secondary)"></p>
+                <button onclick="useAISuggestion()" class="btn btn-primary btn-sm" style="margin-top:8px">Use This Reply</button>
+              </div>
+
+              <textarea id="replyContent" class="form-control" rows="4" placeholder="${isCustomer ? 'Write your reply...' : 'Write a response to the customer...'}"></textarea>
+              
+              <div style="margin-top:10px">
+                <div class="file-drop-zone" style="padding:12px;text-align:center" onclick="document.getElementById('msgFileInput').click()">
+                  <span style="font-size:13px;color:var(--text-muted)">📎 Attach files</span>
+                </div>
+                <input type="file" id="msgFileInput" multiple style="display:none" onchange="addMsgFiles(this.files)">
+                <div class="file-chips" id="msgFileChips"></div>
+              </div>
+
+              <div style="display:flex;justify-content:flex-end;margin-top:12px">
+                <button class="btn btn-primary" onclick="sendReply()">
+                  ${isCustomer ? 'Send Reply' : 'Send Response'}
+                </button>
+              </div>
+            </div>
+          ` : `
+            <div class="card" style="text-align:center;padding:32px;background:var(--success-light);border-color:var(--success)">
+              <div style="font-size:40px;margin-bottom:8px">✅</div>
+              <h3 style="color:var(--success);font-weight:700">Ticket Resolved</h3>
+              <p style="color:var(--text-secondary);font-size:14px;margin-top:4px">
+                Resolved ${t.resolvedAt ? formatDateTime(t.resolvedAt) : ''}
+              </p>
+              ${t.satisfactionRating ? `
+                <div style="margin-top:12px">
+                  ${'⭐'.repeat(t.satisfactionRating)} 
+                  <span style="font-size:13px;color:var(--text-muted)">(${t.satisfactionRating}/5)</span>
+                </div>
+              ` : (isCustomer ? `
+                <button class="btn btn-warning" style="margin-top:16px" onclick="Modal.open('rateModal')">⭐ Rate Your Experience</button>
+              ` : '')}
+            </div>
+          `}
+        </div>
+
+        <!-- Right: Ticket Info -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- AI Analysis -->
+          ${t.aiAnalysis ? `
+            <div class="ai-box">
+              <div class="ai-box-header">
+                <span style="font-size:18px">🤖</span>
+                <h4>AI Analysis</h4>
+                ${t.aiAnalysis.confidence ? `<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">${Math.round(t.aiAnalysis.confidence*100)}% confidence</span>` : ''}
+              </div>
+              <div class="ai-box-body" style="flex-direction:column">
+                <div class="ai-insight">
+                  <span class="ai-insight-label">Detected Category</span>
+                  <span class="ai-insight-value">${t.aiAnalysis.suggestedCategory || '—'}</span>
+                </div>
+                <div class="ai-insight">
+                  <span class="ai-insight-label">Detected Priority</span>
+                  <span class="ai-insight-value">${t.aiAnalysis.suggestedPriority ? getPriorityBadge(t.aiAnalysis.suggestedPriority) : '—'}</span>
+                </div>
+                <div class="ai-insight">
+                  <span class="ai-insight-label">Sentiment</span>
+                  <span class="ai-insight-value">${t.aiAnalysis.sentiment ? getSentimentBadge(t.aiAnalysis.sentiment) : '—'}</span>
+                </div>
+                ${t.aiAnalysis.routingRecommendation ? `
+                  <div class="ai-insight">
+                    <span class="ai-insight-label">Routing</span>
+                    <span class="ai-insight-value">${escapeHtml(t.aiAnalysis.routingRecommendation)}</span>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Ticket Details -->
+          <div class="card">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:14px">Ticket Details</h3>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:8px">
+                <span style="color:var(--text-muted)">Status</span>
+                ${getStatusBadge(t.status)}
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:8px">
+                <span style="color:var(--text-muted)">Priority</span>
+                ${getPriorityBadge(t.priority)}
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:8px">
+                <span style="color:var(--text-muted)">Category</span>
+                <span style="font-weight:500">${t.category}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:8px">
+                <span style="color:var(--text-muted)">Customer</span>
+                <span style="font-weight:500">${escapeHtml(t.customerName || '—')}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:8px">
+                <span style="color:var(--text-muted)">Assigned To</span>
+                <span style="font-weight:500">${escapeHtml(t.agentName || 'Unassigned')}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px">
+                <span style="color:var(--text-muted)">Created</span>
+                <span>${formatDate(t.createdAt)}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLA Card -->
+          ${t.sla?.dueDate ? `
+            <div class="card" style="border-color:${sla.cls === 'overdue' ? 'var(--danger)' : sla.cls === 'warning' ? 'var(--warning)' : 'var(--border)'}">
+              <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">⏰ SLA Status</h3>
+              <div style="font-size:22px;font-weight:800;color:var(--${sla.cls === 'overdue' ? 'danger' : sla.cls === 'warning' ? 'warning' : 'success'});margin-bottom:4px">${sla.label}</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Due: ${formatDateTime(t.sla.dueDate)}</div>
+              <div class="sla-bar-container">
+                <div class="sla-bar ${sla.cls}" style="width:${getSLAPercent(t.sla.dueDate, t.createdAt)}%"></div>
+              </div>
+            </div>
+          ` : ''}
+
+        </div>
+      </div>
+    `;
+  }
+
+  function renderMessage(m) {
+    const isMe = m.sender?._id === user?._id || m.sender === user?._id;
+    const senderName = m.senderName || m.sender?.name || 'Unknown';
+    const senderRole = m.senderRole || m.sender?.role || 'customer';
+    const avatarClass = senderRole === 'customer' ? 'customer-avatar' : senderRole === 'admin' ? 'admin-avatar' : 'agent-avatar';
+    const side = senderRole !== 'customer' ? 'agent' : '';
+
+    return `
+      <div class="message-bubble ${side}">
+        <div class="message-avatar ${avatarClass}">${getInitials(senderName)}</div>
+        <div class="message-content">
+          <div class="message-meta">
+            <strong>${escapeHtml(senderName)}</strong>
+            <span style="text-transform:capitalize">${senderRole}</span>
+            ${m.isInternal ? '<span style="font-size:10px;background:var(--warning);color:white;padding:1px 6px;border-radius:10px">INTERNAL</span>' : ''}
+            <span>${formatDateTime(m.createdAt)}</span>
+          </div>
+          <div class="message-body ${m.isInternal ? 'internal' : ''}">
+            <p style="white-space:pre-wrap">${escapeHtml(m.content)}</p>
+            ${m.attachments?.length ? `
+              <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+                ${m.attachments.map(a => `
+                  <a href="http://localhost:5000${a}" target="_blank" class="file-chip" style="text-decoration:none">📎 ${a.split('/').pop()}</a>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  let isInternalNote = false;
+
+  function switchReplyTab(type) {
+    isInternalNote = type === 'internal';
+    document.getElementById('replyTabBtn').className = `tab-btn ${!isInternalNote ? 'active' : ''}`;
+    document.getElementById('noteTabBtn').className = `tab-btn ${isInternalNote ? 'active' : ''}`;
+    if (!isInternalNote) {
+      document.getElementById('replyTabBtn').style.cssText = 'border-bottom:2px solid var(--primary);color:var(--primary)';
+      document.getElementById('noteTabBtn').style.cssText = '';
+    } else {
+      document.getElementById('noteTabBtn').style.cssText = 'border-bottom:2px solid var(--warning);color:var(--warning)';
+      document.getElementById('replyTabBtn').style.cssText = '';
+    }
+    const textarea = document.getElementById('replyContent');
+    textarea.placeholder = isInternalNote ? 'Internal note (visible only to agents and admins)...' : 'Write a response to the customer...';
+    if (isInternalNote) textarea.style.background = 'var(--warning-light)';
+    else textarea.style.background = '';
+  }
+
+  async function loadAISuggestion() {
+    const box = document.getElementById('aiSuggestionBox');
+    const textEl = document.getElementById('aiSuggestionText');
+    box.style.display = 'block';
+    textEl.textContent = '🤖 Generating AI suggestion...';
+
+    const res = await API.getAISuggestion(ticketId);
+    if (res?.ok) {
+      textEl.textContent = res.data.data.suggestion;
+    } else {
+      textEl.textContent = 'Could not generate suggestion. Try again.';
+    }
+  }
+
+  function useAISuggestion() {
+    const text = document.getElementById('aiSuggestionText').textContent;
+    document.getElementById('replyContent').value = text;
+    document.getElementById('aiSuggestionBox').style.display = 'none';
+  }
+
+  function addMsgFiles(files) {
+    selectedMsgFiles = [...selectedMsgFiles, ...Array.from(files)].slice(0, 5);
+    const chips = document.getElementById('msgFileChips');
+    chips.innerHTML = selectedMsgFiles.map((f, i) => `
+      <div class="file-chip">
+        <span>${f.type.startsWith('image/') ? '🖼️' : '📄'}</span>
+        <span>${escapeHtml(f.name)}</span>
+        <button type="button" onclick="removeMsgFile(${i})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function removeMsgFile(i) {
+    selectedMsgFiles.splice(i, 1);
+    addMsgFiles([]);
+  }
+
+  async function sendReply() {
+    const content = document.getElementById('replyContent').value.trim();
+    if (!content) { Toast.warning('Empty reply', 'Please write a message before sending'); return; }
+
+    const formData = new FormData();
+    formData.append('content', content);
+    formData.append('isInternal', isInternalNote);
+    selectedMsgFiles.forEach(f => formData.append('attachments', f));
+
+    const res = await API.addMessage(ticketId, formData);
+    if (res?.ok) {
+      Toast.success('Message sent!');
+      ticket = res.data.data;
+      document.getElementById('replyContent').value = '';
+      selectedMsgFiles = [];
+      document.getElementById('msgFileChips').innerHTML = '';
+      document.getElementById('aiSuggestionBox').style.display = 'none';
+      // Re-render just the thread
+      const publicMessages = ticket.messages.filter(m => !m.isInternal || role !== 'customer');
+      document.getElementById('messageThread').innerHTML = publicMessages.map(m => renderMessage(m)).join('');
+      document.getElementById('messageThread').lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      Toast.error('Failed', res?.data?.message || 'Could not send message');
+    }
+  }
+
+  async function updateStatus(status) {
+    if (!status) return;
+    const res = await API.updateTicket(ticketId, { status });
+    if (res?.ok) {
+      Toast.success('Status updated', `Ticket is now ${status}`);
+      ticket = res.data.data;
+      setTimeout(loadTicket, 500);
+    } else {
+      Toast.error('Failed', res?.data?.message || 'Could not update status');
+    }
+  }
+
+  async function openAssignModal() {
+    Modal.open('assignModal');
+    const res = await API.getUsers({ role: 'agent' });
+    const select = document.getElementById('agentSelect');
+    if (res?.ok) {
+      select.innerHTML = '<option value="">Select an agent...</option>' +
+        res.data.data.map(a => `<option value="${a._id}">${escapeHtml(a.name)} ${a.department ? `(${a.department})` : ''}</option>`).join('');
+    }
+  }
+
+  async function assignTicket() {
+    const agentId = document.getElementById('agentSelect').value;
+    if (!agentId) { Toast.warning('Select an agent', ''); return; }
+    const res = await API.assignTicket(ticketId, agentId);
+    if (res?.ok) {
+      Toast.success('Ticket assigned!');
+      Modal.close('assignModal');
+      loadTicket();
+    } else {
+      Toast.error('Failed', res?.data?.message);
+    }
+  }
+
+  function setRating(val) {
+    currentRating = val;
+    const stars = document.querySelectorAll('#starRating .star');
+    stars.forEach((s, i) => s.classList.toggle('filled', i < val));
+    const labels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+    document.getElementById('ratingLabel').textContent = labels[val];
+    document.getElementById('submitRatingBtn').disabled = false;
+  }
+
+  async function submitRating() {
+    const res = await API.rateTicket(ticketId, currentRating);
+    if (res?.ok) {
+      Toast.success('Thank you!', 'Your feedback helps us improve');
+      Modal.close('rateModal');
+      loadTicket();
+    }
+  }
+
+  function getSLAPercent(dueDate, createdAt) {
+    const total = new Date(dueDate) - new Date(createdAt);
+    const elapsed = Date.now() - new Date(createdAt);
+    return Math.min(100, Math.max(0, (elapsed / total) * 100));
+  }
+
+  loadTicket();
+</script>
+</body>
+</html>

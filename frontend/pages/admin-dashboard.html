@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — SupportDesk</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar-root"></aside>
+  <div class="main-content">
+    <header class="topbar" id="topbar-root"></header>
+    <main class="page-content">
+
+      <!-- SLA Alert Banner -->
+      <div id="slaBanner" style="display:none" class="card" style="background:var(--danger-light);border-color:var(--danger);margin-bottom:20px;padding:14px 20px">
+        <div style="display:flex;align-items:center;gap:12px;color:var(--danger)">
+          <span style="font-size:20px">🚨</span>
+          <span id="slaBannerText" style="font-weight:600;font-size:14px"></span>
+          <a href="sla.html" style="margin-left:auto;font-size:13px;font-weight:600;color:var(--danger);text-decoration:underline">View →</a>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid" id="statsGrid">
+        <!-- Populated by JS -->
+        <div class="stat-card loading-skeleton" style="height:120px"></div>
+        <div class="stat-card loading-skeleton" style="height:120px"></div>
+        <div class="stat-card loading-skeleton" style="height:120px"></div>
+        <div class="stat-card loading-skeleton" style="height:120px"></div>
+        <div class="stat-card loading-skeleton" style="height:120px"></div>
+        <div class="stat-card loading-skeleton" style="height:120px"></div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Ticket Trends (30 days)</div>
+              <div class="card-subtitle">Daily ticket volume</div>
+            </div>
+          </div>
+          <div style="height:220px"><canvas id="trendChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">By Category</div>
+              <div class="card-subtitle">Ticket distribution</div>
+            </div>
+          </div>
+          <div style="height:220px"><canvas id="categoryChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">By Priority</div>
+            </div>
+          </div>
+          <div style="height:220px"><canvas id="priorityChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Sentiment Analysis</div>
+              <div class="card-subtitle">Customer tone distribution</div>
+            </div>
+          </div>
+          <div style="height:220px"><canvas id="sentimentChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Agent Performance Table -->
+      <div class="card" style="margin-top:24px">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Agent Performance</div>
+            <div class="card-subtitle">Resolution rates and satisfaction scores</div>
+          </div>
+          <a href="agents.html" class="btn btn-secondary btn-sm">View All</a>
+        </div>
+        <div class="table-container" style="border:none">
+          <table id="agentTable">
+            <thead>
+              <tr>
+                <th>Agent</th>
+                <th>Assigned</th>
+                <th>Resolved</th>
+                <th>Resolution Rate</th>
+                <th>Satisfaction</th>
+              </tr>
+            </thead>
+            <tbody id="agentTableBody">
+              <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted)">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Recent Tickets -->
+      <div class="card" style="margin-top:24px">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Recent Tickets</div>
+            <div class="card-subtitle">Latest support requests</div>
+          </div>
+          <a href="tickets.html" class="btn btn-secondary btn-sm">View All</a>
+        </div>
+        <div class="table-container" style="border:none">
+          <table>
+            <thead>
+              <tr>
+                <th>Ticket ID</th>
+                <th>Title</th>
+                <th>Customer</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody id="recentTicketsBody">
+              <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted)">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  initPage('admin', 'Dashboard');
+  let charts = {};
+
+  async function loadDashboard() {
+    const [statsRes, agentsRes, ticketsRes, slaRes] = await Promise.all([
+      API.getStats(),
+      API.getAgentPerformance(),
+      API.getTickets({ limit: 10 }),
+      API.getSLAReport(),
+    ]);
+
+    if (statsRes?.ok) renderStats(statsRes.data.data);
+    if (agentsRes?.ok) renderAgentTable(agentsRes.data.data);
+    if (ticketsRes?.ok) renderRecentTickets(ticketsRes.data.data);
+    if (slaRes?.ok) renderSLABanner(slaRes.data.data);
+  }
+
+  function renderStats(data) {
+    const { tickets, users, sla, avgResolutionHours, avgSatisfaction } = data;
+    const statsConfig = [
+      { label: 'Total Tickets', value: tickets.totalTickets, icon: '🎫', color: '#4F46E5', bg: '#EEF2FF' },
+      { label: 'Open Tickets', value: tickets.openTickets, icon: '📂', color: '#3B82F6', bg: '#DBEAFE' },
+      { label: 'In Progress', value: tickets.inProgressTickets, icon: '⚡', color: '#8B5CF6', bg: '#EDE9FE' },
+      { label: 'Critical', value: tickets.criticalTickets, icon: '🚨', color: '#EF4444', bg: '#FEE2E2' },
+      { label: 'Resolved', value: tickets.resolvedTickets, icon: '✅', color: '#10B981', bg: '#D1FAE5' },
+      { label: 'SLA Breached', value: sla.slaBreached, icon: '⏰', color: '#F59E0B', bg: '#FEF3C7' },
+      { label: 'Total Agents', value: users.totalAgents, icon: '🛠️', color: '#06B6D4', bg: '#CFFAFE' },
+      { label: 'Avg Resolution', value: `${avgResolutionHours}h`, icon: '⏱️', color: '#EC4899', bg: '#FCE7F3' },
+    ];
+
+    document.getElementById('statsGrid').innerHTML = statsConfig.map(s => `
+      <div class="stat-card" style="--card-accent:${s.color};--card-accent-bg:${s.bg}">
+        <div class="stat-icon">${s.icon}</div>
+        <div class="stat-value">${s.value}</div>
+        <div class="stat-label">${s.label}</div>
+      </div>
+    `).join('');
+
+    // Charts
+    renderCharts(data);
+  }
+
+  function renderCharts(data) {
+    // Destroy existing
+    Object.values(charts).forEach(c => c?.destroy());
+
+    // Trend chart
+    const trendCtx = document.getElementById('trendChart');
+    if (trendCtx) {
+      charts.trend = createLineChart(trendCtx, 
+        data.ticketTrends.map(t => t._id.slice(5)), // MM-DD
+        [{
+          label: 'Tickets',
+          data: data.ticketTrends.map(t => t.count),
+          borderColor: ChartColors.primary,
+          backgroundColor: 'rgba(79,70,229,0.1)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 3,
+        }]
+      );
+    }
+
+    // Category chart
+    const catCtx = document.getElementById('categoryChart');
+    if (catCtx && data.ticketsByCategory.length) {
+      charts.category = createPieChart(catCtx,
+        data.ticketsByCategory.map(c => c._id),
+        data.ticketsByCategory.map(c => c.count)
+      );
+    }
+
+    // Priority chart
+    const prioCtx = document.getElementById('priorityChart');
+    if (prioCtx && data.ticketsByPriority.length) {
+      const prioColors = { Low: '#10B981', Medium: '#F59E0B', High: '#EF4444', Critical: '#7C3AED' };
+      charts.priority = createBarChart(prioCtx,
+        data.ticketsByPriority.map(p => p._id),
+        [{
+          label: 'Tickets',
+          data: data.ticketsByPriority.map(p => p.count),
+          backgroundColor: data.ticketsByPriority.map(p => prioColors[p._id] || '#94A3B8'),
+          borderRadius: 6,
+        }]
+      );
+    }
+
+    // Sentiment chart
+    const sentCtx = document.getElementById('sentimentChart');
+    if (sentCtx && data.sentimentDist.length) {
+      const sentColors = { Positive: '#10B981', Neutral: '#94A3B8', Negative: '#EF4444' };
+      charts.sentiment = createPieChart(sentCtx,
+        data.sentimentDist.map(s => s._id),
+        data.sentimentDist.map(s => s.count),
+        data.sentimentDist.map(s => sentColors[s._id] || '#94A3B8')
+      );
+    }
+  }
+
+  function renderAgentTable(agents) {
+    const body = document.getElementById('agentTableBody');
+    if (!agents.length) {
+      body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted)">No agents found</td></tr>';
+      return;
+    }
+    body.innerHTML = agents.map(a => `
+      <tr onclick="window.location='agents.html'">
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="avatar avatar-sm" style="background:var(--primary)">${getInitials(a.name)}</div>
+            <div>
+              <div style="font-weight:600">${escapeHtml(a.name)}</div>
+              <div style="font-size:12px;color:var(--text-muted)">${escapeHtml(a.department || '—')}</div>
+            </div>
+          </div>
+        </td>
+        <td>${a.assignedTickets}</td>
+        <td>${a.resolvedTickets}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="progress-bar" style="width:80px">
+              <div class="progress-fill ${a.resolutionRate >= 80 ? 'success' : a.resolutionRate >= 50 ? 'warning' : 'danger'}" style="width:${a.resolutionRate}%"></div>
+            </div>
+            <span style="font-size:13px;font-weight:600">${a.resolutionRate}%</span>
+          </div>
+        </td>
+        <td>${a.avgSatisfaction ? `<span style="font-weight:700;color:var(--warning)">⭐ ${a.avgSatisfaction}</span>` : '—'}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderRecentTickets(tickets) {
+    const body = document.getElementById('recentTicketsBody');
+    if (!tickets.length) {
+      body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted)">No tickets yet</td></tr>';
+      return;
+    }
+    body.innerHTML = tickets.map(t => `
+      <tr onclick="window.location='ticket-detail.html?id=${t._id}'">
+        <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--primary)">${t.ticketId}</span></td>
+        <td><span style="font-weight:500">${escapeHtml(t.title)}</span></td>
+        <td>${escapeHtml(t.customerName || '—')}</td>
+        <td>${getPriorityBadge(t.priority)}</td>
+        <td>${getStatusBadge(t.status)}</td>
+        <td style="color:var(--text-muted);font-size:13px">${timeAgo(t.createdAt)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderSLABanner(sla) {
+    const banner = document.getElementById('slaBanner');
+    if (sla.overdueCount > 0) {
+      document.getElementById('slaBannerText').textContent = 
+        `⚠️ ${sla.overdueCount} ticket${sla.overdueCount > 1 ? 's' : ''} overdue SLA — immediate attention required`;
+      banner.style.display = 'block';
+      banner.style.background = 'var(--danger-light)';
+      banner.style.border = '1px solid var(--danger)';
+      banner.style.borderRadius = 'var(--radius-md)';
+      banner.style.padding = '14px 20px';
+      banner.style.marginBottom = '20px';
+    } else if (sla.warningCount > 0) {
+      document.getElementById('slaBannerText').textContent = 
+        `⚡ ${sla.warningCount} ticket${sla.warningCount > 1 ? 's' : ''} approaching SLA deadline`;
+      banner.style.display = 'block';
+      banner.style.background = 'var(--warning-light)';
+      banner.style.border = '1px solid var(--warning)';
+      banner.style.borderRadius = 'var(--radius-md)';
+      banner.style.padding = '14px 20px';
+      banner.style.marginBottom = '20px';
+    }
+  }
+
+  loadDashboard();
+</script>
+</body>
+</html>

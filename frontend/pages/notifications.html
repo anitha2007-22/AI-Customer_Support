@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications — SupportDesk</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar-root"></aside>
+  <div class="main-content">
+    <header class="topbar" id="topbar-root"></header>
+    <main class="page-content">
+
+      <div style="max-width:720px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div>
+            <h2 style="font-size:20px;font-weight:800">Notifications</h2>
+            <p style="color:var(--text-muted);font-size:13px" id="notifCount">Loading...</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="markAllRead()">✓ Mark all as read</button>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="tabs" style="margin-bottom:16px">
+          <button class="tab-btn active" onclick="filterNotifs('all', this)">All</button>
+          <button class="tab-btn" onclick="filterNotifs('unread', this)">Unread</button>
+          <button class="tab-btn" onclick="filterNotifs('ticket_created', this)">New Tickets</button>
+          <button class="tab-btn" onclick="filterNotifs('ticket_message', this)">Messages</button>
+          <button class="tab-btn" onclick="filterNotifs('sla_warning', this)">SLA Alerts</button>
+        </div>
+
+        <div id="notifList">
+          <div style="padding:40px;text-align:center;color:var(--text-muted)">Loading...</div>
+        </div>
+
+        <div id="loadMoreBtn" style="text-align:center;margin-top:20px;display:none">
+          <button class="btn btn-secondary" onclick="loadMore()">Load more</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  const user = Auth.getUser();
+  initPage(user?.role || 'customer', 'Notifications');
+
+  let allNotifs = [];
+  let page = 1;
+  let currentFilter = 'all';
+  const limit = 20;
+
+  async function loadNotifications(reset = true) {
+    if (reset) { page = 1; allNotifs = []; }
+
+    const res = await API.getNotifications({ page, limit });
+    if (!res?.ok) return;
+
+    if (reset) {
+      allNotifs = res.data.data;
+    } else {
+      allNotifs = [...allNotifs, ...res.data.data];
+    }
+
+    const unread = allNotifs.filter(n => !n.isRead).length;
+    document.getElementById('notifCount').textContent = `${res.data.unreadCount} unread notification${res.data.unreadCount !== 1 ? 's' : ''}`;
+    updateNotifBadge(res.data.unreadCount);
+
+    renderNotifs();
+
+    const hasMore = res.data.data.length === limit;
+    document.getElementById('loadMoreBtn').style.display = hasMore ? 'block' : 'none';
+  }
+
+  function filterNotifs(type, btn) {
+    currentFilter = type;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderNotifs();
+  }
+
+  function renderNotifs() {
+    let notifs = allNotifs;
+    if (currentFilter === 'unread') notifs = notifs.filter(n => !n.isRead);
+    else if (currentFilter !== 'all') notifs = notifs.filter(n => n.type === currentFilter);
+
+    const list = document.getElementById('notifList');
+    if (!notifs.length) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🔔</div>
+          <h3>No notifications</h3>
+          <p>You're all caught up!</p>
+        </div>
+      `;
+      return;
+    }
+
+    list.innerHTML = notifs.map(n => `
+      <div style="display:flex;align-items:flex-start;gap:14px;padding:16px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:10px;cursor:pointer;transition:all 0.2s;${n.isRead ? '' : 'border-left:3px solid var(--primary);background:var(--primary-ghost)'}"
+           onclick="handleNotif('${n._id}', '${n.link || ''}', this)">
+        <div style="width:40px;height:40px;border-radius:50%;background:${getNotifColor(n.type)};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+          ${getNotifIcon(n.type)}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:${n.isRead ? '400' : '600'};color:var(--text-primary);margin-bottom:4px">${escapeHtml(n.message)}</div>
+          <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:8px">
+            <span>${getNotifTypeLabel(n.type)}</span>
+            <span>·</span>
+            <span>${timeAgo(n.createdAt)}</span>
+            ${n.ticketRef ? `<span>· <strong style="color:var(--primary)">${n.ticketRef}</strong></span>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          ${!n.isRead ? `<span style="width:8px;height:8px;background:var(--primary);border-radius:50%;margin-top:6px"></span>` : ''}
+          <button onclick="deleteNotif('${n._id}', event)" style="color:var(--text-muted);font-size:14px;padding:4px;background:none;border:none;cursor:pointer" title="Delete">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function handleNotif(id, link, el) {
+    await API.markNotifRead(id);
+    el.style.borderLeft = '';
+    el.style.background = 'var(--bg-card)';
+    el.querySelector('span[style*="border-radius:50%"]')?.remove();
+    // Mark in allNotifs array
+    const n = allNotifs.find(n => n._id === id);
+    if (n) n.isRead = true;
+    if (link) window.location.href = link;
+  }
+
+  async function deleteNotif(id, e) {
+    e.stopPropagation();
+    const res = await API.deleteNotif(id);
+    if (res?.ok) {
+      allNotifs = allNotifs.filter(n => n._id !== id);
+      renderNotifs();
+    }
+  }
+
+  async function markAllRead() {
+    await API.markAllNotifRead();
+    allNotifs.forEach(n => n.isRead = true);
+    renderNotifs();
+    updateNotifBadge(0);
+    document.getElementById('notifCount').textContent = '0 unread notifications';
+    Toast.success('Done', 'All notifications marked as read');
+  }
+
+  function loadMore() {
+    page++;
+    loadNotifications(false);
+  }
+
+  const getNotifTypeLabel = (type) => {
+    const labels = {
+      ticket_created: 'New Ticket', ticket_assigned: 'Assignment',
+      ticket_status_changed: 'Status Change', ticket_resolved: 'Resolved',
+      ticket_message: 'New Message', sla_warning: 'SLA Alert', system: 'System',
+    };
+    return labels[type] || 'Notification';
+  };
+
+  loadNotifications();
+</script>
+</body>
+</html>

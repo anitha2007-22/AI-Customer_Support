@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SLA Monitor — SupportDesk</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar-root"></aside>
+  <div class="main-content">
+    <header class="topbar" id="topbar-root"></header>
+    <main class="page-content">
+
+      <!-- SLA Stats -->
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px" id="slaStats">
+        <div class="stat-card loading-skeleton" style="height:110px"></div>
+        <div class="stat-card loading-skeleton" style="height:110px"></div>
+        <div class="stat-card loading-skeleton" style="height:110px"></div>
+      </div>
+
+      <!-- SLA Legend -->
+      <div class="card" style="margin-bottom:20px">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">SLA Resolution Targets</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
+          <div style="text-align:center;padding:12px;background:var(--critical-light);border-radius:8px;border:1px solid rgba(124,58,237,0.2)">
+            <div style="font-weight:800;color:var(--critical);font-size:20px">4h</div>
+            <div style="font-size:12px;color:var(--text-muted)">🚨 Critical</div>
+          </div>
+          <div style="text-align:center;padding:12px;background:var(--danger-light);border-radius:8px;border:1px solid rgba(239,68,68,0.2)">
+            <div style="font-weight:800;color:var(--danger);font-size:20px">24h</div>
+            <div style="font-size:12px;color:var(--text-muted)">🔴 High</div>
+          </div>
+          <div style="text-align:center;padding:12px;background:var(--warning-light);border-radius:8px;border:1px solid rgba(245,158,11,0.2)">
+            <div style="font-weight:800;color:var(--warning);font-size:20px">48h</div>
+            <div style="font-size:12px;color:var(--text-muted)">🟡 Medium</div>
+          </div>
+          <div style="text-align:center;padding:12px;background:var(--success-light);border-radius:8px;border:1px solid rgba(16,185,129,0.2)">
+            <div style="font-weight:800;color:var(--success);font-size:20px">72h</div>
+            <div style="font-size:12px;color:var(--text-muted)">🟢 Low</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overdue Tickets -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <div>
+            <div class="card-title" style="color:var(--danger)">🚨 Overdue Tickets</div>
+            <div class="card-subtitle">SLA deadline has already passed</div>
+          </div>
+          <span id="overdueCount" class="badge badge-high">0</span>
+        </div>
+        <div id="overdueList">
+          <div style="padding:32px;text-align:center;color:var(--text-muted)">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Warning Tickets -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title" style="color:var(--warning)">⚡ Warning — Due Soon</div>
+            <div class="card-subtitle">SLA deadline within 4 hours</div>
+          </div>
+          <span id="warningCount" class="badge badge-medium">0</span>
+        </div>
+        <div id="warningList">
+          <div style="padding:32px;text-align:center;color:var(--text-muted)">Loading...</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  initPage('admin', 'SLA Monitor');
+
+  async function loadSLA() {
+    const [slaRes, statsRes] = await Promise.all([API.getSLAReport(), API.getStats()]);
+    if (!slaRes?.ok) return;
+
+    const { overdueTickets, warningTickets, overdueCount, warningCount } = slaRes.data.data;
+    const totalOpen = statsRes?.data?.data?.tickets?.openTickets || 0;
+    const onTrack = Math.max(0, totalOpen - overdueCount - warningCount);
+
+    document.getElementById('overdueCount').textContent = overdueCount;
+    document.getElementById('warningCount').textContent = warningCount;
+
+    document.getElementById('slaStats').innerHTML = `
+      <div class="stat-card" style="--card-accent:var(--danger);--card-accent-bg:var(--danger-light)">
+        <div class="stat-icon">🚨</div>
+        <div class="stat-value">${overdueCount}</div>
+        <div class="stat-label">SLA Breached</div>
+      </div>
+      <div class="stat-card" style="--card-accent:var(--warning);--card-accent-bg:var(--warning-light)">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-value">${warningCount}</div>
+        <div class="stat-label">At Risk</div>
+      </div>
+      <div class="stat-card" style="--card-accent:var(--success);--card-accent-bg:var(--success-light)">
+        <div class="stat-icon">✅</div>
+        <div class="stat-value">${onTrack}</div>
+        <div class="stat-label">On Track</div>
+      </div>
+    `;
+
+    renderTicketList('overdueList', overdueTickets, 'overdue');
+    renderTicketList('warningList', warningTickets, 'warning');
+  }
+
+  function renderTicketList(containerId, tickets, type) {
+    const container = document.getElementById(containerId);
+    if (!tickets.length) {
+      const icon = type === 'overdue' ? '🎉' : '✅';
+      const msg = type === 'overdue' ? 'No overdue tickets — excellent!' : 'No tickets approaching deadline';
+      container.innerHTML = `<div style="text-align:center;padding:32px;color:var(--success)"><span style="font-size:32px">${icon}</span><p style="margin-top:8px;font-weight:600">${msg}</p></div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="table-container" style="border:none">
+        <table>
+          <thead>
+            <tr>
+              <th>Ticket ID</th>
+              <th>Title</th>
+              <th>Priority</th>
+              <th>Customer</th>
+              <th>Agent</th>
+              <th>SLA Status</th>
+              <th>Due Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tickets.map(t => {
+              const sla = getSLAStatus(t.sla?.dueDate, t.status);
+              const overdueMins = Math.abs(Math.floor((new Date(t.sla.dueDate) - Date.now()) / 60000));
+              const overdueDisplay = type === 'overdue'
+                ? (overdueMins > 60 ? `${Math.floor(overdueMins/60)}h ${overdueMins%60}m overdue` : `${overdueMins}m overdue`)
+                : sla.label;
+              return `
+                <tr>
+                  <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--${type==='overdue'?'danger':'warning'})">${t.ticketId}</span></td>
+                  <td style="font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(t.title)}</td>
+                  <td>${getPriorityBadge(t.priority)}</td>
+                  <td style="font-size:13px">${escapeHtml(t.customerId?.name || '—')}</td>
+                  <td style="font-size:13px">${escapeHtml(t.assignedAgent?.name || 'Unassigned')}</td>
+                  <td><span style="font-weight:700;color:var(--${type==='overdue'?'danger':'warning'})">${overdueDisplay}</span></td>
+                  <td style="font-size:12px;color:var(--text-muted)">${formatDateTime(t.sla.dueDate)}</td>
+                  <td><a href="ticket-detail.html?id=${t._id}" class="btn btn-primary btn-sm">View →</a></td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  loadSLA();
+
+  // Auto-refresh every 2 minutes
+  setInterval(loadSLA, 120000);
+</script>
+</body>
+</html>

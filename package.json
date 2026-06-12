@@ -1,0 +1,15 @@
+{
+  "name": "supportdesk",
+  "version": "1.0.0",
+  "description": "AI-Powered Customer Support Ticketing System",
+  "scripts": {
+    "install:backend": "cd backend && npm install",
+    "seed": "cd backend && npm run seed",
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev",
+    "serve:frontend": "npx serve . -l 5500"
+  },
+  "keywords": ["support", "ticketing", "ai", "gemini", "nodejs", "mongodb"],
+  "author": "SupportDesk",
+  "license": "MIT"
+}

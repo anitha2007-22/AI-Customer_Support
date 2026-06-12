@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — SupportDesk</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar-root"></aside>
+  <div class="main-content">
+    <header class="topbar" id="topbar-root"></header>
+    <main class="page-content">
+
+      <div style="max-width:760px;margin:0 auto">
+
+        <!-- Profile Header Card -->
+        <div class="card" style="margin-bottom:20px;background:linear-gradient(135deg,var(--primary),var(--accent));color:white;border:none">
+          <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+            <div style="position:relative">
+              <div class="avatar avatar-lg" id="profileAvatarDisplay" style="width:80px;height:80px;font-size:28px;border:3px solid rgba(255,255,255,0.4)"></div>
+              <label for="avatarInput" style="position:absolute;bottom:0;right:0;width:26px;height:26px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--primary)">✏️</label>
+              <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="previewAvatar(this)">
+            </div>
+            <div style="flex:1">
+              <h2 id="profileName" style="font-size:24px;font-weight:800;margin-bottom:4px">—</h2>
+              <p id="profileEmail" style="opacity:0.85;font-size:14px;margin-bottom:4px">—</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span id="profileRole" style="background:rgba(255,255,255,0.2);padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700"></span>
+                <span id="profileDept" style="background:rgba(255,255,255,0.2);padding:3px 12px;border-radius:20px;font-size:12px"></span>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:12px;opacity:0.7">Member since</div>
+              <div id="memberSince" style="font-size:14px;font-weight:600">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+          <!-- Edit Profile -->
+          <div class="card">
+            <div class="card-header" style="margin-bottom:20px">
+              <div class="card-title">Edit Profile</div>
+            </div>
+            <form id="profileForm">
+              <div class="form-group">
+                <label class="form-label" for="editName">Full Name</label>
+                <input type="text" id="editName" class="form-control" placeholder="Your full name">
+              </div>
+              <div class="form-group" id="deptGroup" style="display:none">
+                <label class="form-label" for="editDept">Department</label>
+                <select id="editDept" class="form-control">
+                  <option value="">Not specified</option>
+                  <option value="Technical Support">Technical Support</option>
+                  <option value="Billing">Billing</option>
+                  <option value="Account Management">Account Management</option>
+                  <option value="General Support">General Support</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Notification Preferences</label>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                    <input type="checkbox" id="notifEmail" style="width:16px;height:16px;accent-color:var(--primary)">
+                    <span style="font-size:14px">Email notifications</span>
+                  </label>
+                  <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                    <input type="checkbox" id="notifBrowser" style="width:16px;height:16px;accent-color:var(--primary)">
+                    <span style="font-size:14px">Browser notifications</span>
+                  </label>
+                </div>
+              </div>
+              <div id="profileError" class="form-error" style="display:none;margin-bottom:10px"></div>
+              <button type="submit" id="saveProfileBtn" class="btn btn-primary" style="width:100%">Save Changes</button>
+            </form>
+          </div>
+
+          <!-- Change Password -->
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <div class="card">
+              <div class="card-title" style="margin-bottom:20px">Change Password</div>
+              <form id="passwordForm">
+                <div class="form-group">
+                  <label class="form-label" for="currentPwd">Current Password</label>
+                  <input type="password" id="currentPwd" class="form-control" placeholder="••••••••">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="newPwd">New Password</label>
+                  <input type="password" id="newPwd" class="form-control" placeholder="At least 6 characters">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="confirmPwd">Confirm New Password</label>
+                  <input type="password" id="confirmPwd" class="form-control" placeholder="Repeat new password">
+                </div>
+                <div id="pwdError" class="form-error" style="display:none;margin-bottom:10px"></div>
+                <button type="submit" class="btn btn-secondary" style="width:100%">Update Password</button>
+              </form>
+            </div>
+
+            <!-- Account Stats -->
+            <div class="card" id="accountStats">
+              <div class="card-title" style="margin-bottom:16px">Account Stats</div>
+              <div id="statsContent" style="color:var(--text-muted);font-size:13px">Loading...</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  const user = Auth.getUser();
+  initPage(user?.role || 'customer', 'Profile');
+
+  let avatarFile = null;
+
+  async function loadProfile() {
+    const res = await API.getMe();
+    if (!res?.ok) return;
+
+    const u = res.data.data;
+
+    // Header
+    document.getElementById('profileName').textContent = u.name;
+    document.getElementById('profileEmail').textContent = u.email;
+    document.getElementById('profileRole').textContent = u.role.charAt(0).toUpperCase() + u.role.slice(1);
+    document.getElementById('memberSince').textContent = formatDate(u.createdAt);
+
+    const deptEl = document.getElementById('profileDept');
+    if (u.department) { deptEl.textContent = u.department; }
+    else { deptEl.style.display = 'none'; }
+
+    // Avatar
+    const avatarEl = document.getElementById('profileAvatarDisplay');
+    if (u.profileImage) {
+      avatarEl.innerHTML = `<img src="http://localhost:5000${u.profileImage}" alt="${u.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    } else {
+      avatarEl.textContent = getInitials(u.name);
+    }
+
+    // Form
+    document.getElementById('editName').value = u.name;
+    document.getElementById('notifEmail').checked = u.notificationPreferences?.email !== false;
+    document.getElementById('notifBrowser').checked = u.notificationPreferences?.browser !== false;
+
+    // Show dept field for agents
+    if (u.role === 'agent' || u.role === 'admin') {
+      document.getElementById('deptGroup').style.display = 'block';
+      document.getElementById('editDept').value = u.department || '';
+    }
+
+    // Stats
+    loadStats(u);
+  }
+
+  async function loadStats(u) {
+    const statsEl = document.getElementById('statsContent');
+    if (u.role === 'customer') {
+      const res = await API.getTickets({ limit: 100 });
+      if (res?.ok) {
+        const tickets = res.data.data;
+        const open = tickets.filter(t => !['Resolved','Closed'].includes(t.status)).length;
+        const resolved = tickets.filter(t => ['Resolved','Closed'].includes(t.status)).length;
+        statsEl.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between"><span>Total Tickets</span><strong>${tickets.length}</strong></div>
+            <div style="display:flex;justify-content:space-between"><span>Open</span><strong style="color:var(--primary)">${open}</strong></div>
+            <div style="display:flex;justify-content:space-between"><span>Resolved</span><strong style="color:var(--success)">${resolved}</strong></div>
+          </div>`;
+      }
+    } else if (u.role === 'agent') {
+      const res = await API.getTickets({ limit: 100 });
+      if (res?.ok) {
+        const tickets = res.data.data;
+        const resolved = tickets.filter(t => ['Resolved','Closed'].includes(t.status)).length;
+        const rate = tickets.length > 0 ? Math.round((resolved / tickets.length) * 100) : 0;
+        statsEl.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between"><span>Assigned</span><strong>${tickets.length}</strong></div>
+            <div style="display:flex;justify-content:space-between"><span>Resolved</span><strong style="color:var(--success)">${resolved}</strong></div>
+            <div style="display:flex;justify-content:space-between"><span>Resolution Rate</span><strong>${rate}%</strong></div>
+          </div>`;
+      }
+    } else {
+      statsEl.textContent = 'Full stats available in the Analytics dashboard.';
+    }
+  }
+
+  function previewAvatar(input) {
+    const file = input.files[0];
+    if (!file) return;
+    avatarFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      document.getElementById('profileAvatarDisplay').innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  document.getElementById('profileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('saveProfileBtn');
+    const errorEl = document.getElementById('profileError');
+    errorEl.style.display = 'none';
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading"></span> Saving...';
+
+    const formData = new FormData();
+    formData.append('name', document.getElementById('editName').value.trim());
+    formData.append('department', document.getElementById('editDept').value || '');
+    formData.append('notificationPreferences', JSON.stringify({
+      email: document.getElementById('notifEmail').checked,
+      browser: document.getElementById('notifBrowser').checked,
+    }));
+    if (avatarFile) formData.append('profileImage', avatarFile);
+
+    const res = await API.updateProfile(formData);
+    if (res?.ok) {
+      // Update local user cache
+      const updatedUser = { ...Auth.getUser(), name: res.data.data.name, profileImage: res.data.data.profileImage };
+      Auth.setSession(Auth.getToken(), updatedUser);
+      Toast.success('Profile updated!');
+      loadProfile();
+    } else {
+      errorEl.textContent = res?.data?.message || 'Update failed';
+      errorEl.style.display = 'block';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Save Changes';
+  });
+
+  document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('pwdError');
+    errorEl.style.display = 'none';
+
+    const currentPassword = document.getElementById('currentPwd').value;
+    const newPassword = document.getElementById('newPwd').value;
+    const confirmPassword = document.getElementById('confirmPwd').value;
+
+    if (newPassword !== confirmPassword) {
+      errorEl.textContent = 'New passwords do not match';
+      errorEl.style.display = 'block';
+      return;
+    }
+    if (newPassword.length < 6) {
+      errorEl.textContent = 'Password must be at least 6 characters';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const res = await API.changePassword({ currentPassword, newPassword });
+    if (res?.ok) {
+      Toast.success('Password changed!', 'Your password has been updated');
+      document.getElementById('passwordForm').reset();
+    } else {
+      errorEl.textContent = res?.data?.message || 'Failed to change password';
+      errorEl.style.display = 'block';
+    }
+  });
+
+  loadProfile();
+</script>
+</body>
+</html>

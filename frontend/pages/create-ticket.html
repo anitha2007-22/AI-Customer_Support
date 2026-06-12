@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Ticket — SupportDesk</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar-root"></aside>
+  <div class="main-content">
+    <header class="topbar" id="topbar-root"></header>
+    <main class="page-content">
+
+      <div style="max-width:760px;margin:0 auto">
+
+        <!-- Header -->
+        <div style="margin-bottom:24px">
+          <a href="javascript:history.back()" style="color:var(--text-muted);font-size:13px;display:inline-flex;align-items:center;gap:6px;margin-bottom:12px">← Back</a>
+          <h2 style="font-size:22px;font-weight:800">Create Support Ticket</h2>
+          <p style="color:var(--text-secondary);font-size:14px;margin-top:4px">Describe your issue and our AI will automatically categorize and prioritize it.</p>
+        </div>
+
+        <!-- AI Preview Box (shown after title + description filled) -->
+        <div id="aiPreview" class="ai-box" style="display:none">
+          <div class="ai-box-header">
+            <span style="font-size:20px">🤖</span>
+            <h4>AI Analysis Preview</h4>
+            <span id="aiConfidence" style="margin-left:auto;font-size:12px;color:var(--text-muted)"></span>
+          </div>
+          <div class="ai-box-body">
+            <div class="ai-insight">
+              <span class="ai-insight-label">Category</span>
+              <span class="ai-insight-value" id="aiCategory">—</span>
+            </div>
+            <div class="ai-insight">
+              <span class="ai-insight-label">Priority</span>
+              <span class="ai-insight-value" id="aiPriority">—</span>
+            </div>
+            <div class="ai-insight">
+              <span class="ai-insight-label">Sentiment</span>
+              <span class="ai-insight-value" id="aiSentiment">—</span>
+            </div>
+            <div class="ai-insight" style="flex:1">
+              <span class="ai-insight-label">Routing</span>
+              <span class="ai-insight-value" id="aiRouting">—</span>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(79,70,229,0.15)">
+            <span style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:0.05em">AI values are suggestions — you can override them below</span>
+          </div>
+        </div>
+
+        <!-- Ticket Form -->
+        <div class="card">
+          <form id="ticketForm" enctype="multipart/form-data">
+
+            <div class="form-group">
+              <label class="form-label" for="title">Issue Title <span class="req">*</span></label>
+              <input type="text" id="title" class="form-control" placeholder="Brief summary of your issue" required maxlength="200">
+              <div class="form-hint">Be specific — good titles get faster responses</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="description">Description <span class="req">*</span></label>
+              <textarea id="description" class="form-control" placeholder="Describe your issue in detail. Include steps to reproduce, what you expected vs what happened, and any error messages..." required rows="6" maxlength="5000"></textarea>
+              <div style="display:flex;justify-content:space-between;margin-top:4px">
+                <div class="form-hint">More detail = faster resolution</div>
+                <span id="charCount" style="font-size:12px;color:var(--text-muted)">0 / 5000</span>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div class="form-group">
+                <label class="form-label" for="category">Category</label>
+                <select id="category" class="form-control">
+                  <option value="">Auto-detect (Recommended)</option>
+                  <option value="Technical Issue">🔧 Technical Issue</option>
+                  <option value="Billing Issue">💳 Billing Issue</option>
+                  <option value="Account Issue">👤 Account Issue</option>
+                  <option value="General Inquiry">💬 General Inquiry</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="priority">Priority</label>
+                <select id="priority" class="form-control">
+                  <option value="">Auto-detect (Recommended)</option>
+                  <option value="Low">🟢 Low</option>
+                  <option value="Medium">🟡 Medium</option>
+                  <option value="High">🔴 High</option>
+                  <option value="Critical">🚨 Critical</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- File Upload -->
+            <div class="form-group">
+              <label class="form-label">Attachments</label>
+              <div class="file-drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <div class="drop-icon">📎</div>
+                <p>Drop files here or <span>click to browse</span></p>
+                <p style="font-size:12px;margin-top:4px;color:var(--text-muted)">Images, PDF, DOC, TXT · Max 10MB per file · Up to 5 files</p>
+              </div>
+              <input type="file" id="fileInput" name="attachments" multiple accept="image/*,.pdf,.doc,.docx,.txt,.zip,.csv" style="display:none">
+              <div class="file-chips" id="fileChips"></div>
+            </div>
+
+            <div id="formError" class="form-error" style="display:none;margin-bottom:12px"></div>
+
+            <div style="display:flex;gap:12px;justify-content:flex-end">
+              <a href="javascript:history.back()" class="btn btn-secondary">Cancel</a>
+              <button type="submit" id="submitBtn" class="btn btn-primary" style="min-width:140px">
+                🎫 Submit Ticket
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- SLA Info -->
+        <div class="card" style="margin-top:16px;background:var(--primary-ghost);border-color:rgba(79,70,229,0.2)">
+          <h4 style="font-size:14px;font-weight:700;color:var(--primary);margin-bottom:12px">⏱️ Response Time SLA</h4>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
+            <div style="text-align:center;padding:10px;background:var(--success-light);border-radius:8px">
+              <div style="font-weight:800;color:var(--success)">72h</div>
+              <div style="font-size:12px;color:var(--text-muted)">Low Priority</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:var(--warning-light);border-radius:8px">
+              <div style="font-weight:800;color:var(--warning)">48h</div>
+              <div style="font-size:12px;color:var(--text-muted)">Medium Priority</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:var(--danger-light);border-radius:8px">
+              <div style="font-weight:800;color:var(--danger)">24h</div>
+              <div style="font-size:12px;color:var(--text-muted)">High Priority</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:var(--critical-light);border-radius:8px">
+              <div style="font-weight:800;color:var(--critical)">4h</div>
+              <div style="font-size:12px;color:var(--text-muted)">Critical Priority</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  const user = Auth.getUser();
+  const role = user?.role || 'customer';
+  initPage(role === 'admin' || role === 'agent' ? role : 'customer', 'Create Ticket');
+
+  // Character counter
+  document.getElementById('description').addEventListener('input', function() {
+    document.getElementById('charCount').textContent = `${this.value.length} / 5000`;
+  });
+
+  // AI preview debounce
+  let aiTimer;
+  function triggerAIPreview() {
+    clearTimeout(aiTimer);
+    const title = document.getElementById('title').value.trim();
+    const desc = document.getElementById('description').value.trim();
+    if (title.length < 5 || desc.length < 10) {
+      document.getElementById('aiPreview').style.display = 'none';
+      return;
+    }
+    aiTimer = setTimeout(() => runAIPreview(title, desc), 800);
+  }
+  document.getElementById('title').addEventListener('input', triggerAIPreview);
+  document.getElementById('description').addEventListener('input', triggerAIPreview);
+
+  async function runAIPreview(title, description) {
+    // We can't call backend AI directly from preview without creating ticket
+    // Use client-side heuristics for instant feedback
+    const text = `${title} ${description}`.toLowerCase();
+
+    let category = 'General Inquiry';
+    if (/error|bug|crash|fail|broken|not working|issue|problem/.test(text)) category = 'Technical Issue';
+    else if (/bill|payment|charge|invoice|refund|price|subscription/.test(text)) category = 'Billing Issue';
+    else if (/account|login|password|access|locked/.test(text)) category = 'Account Issue';
+
+    let priority = 'Medium';
+    if (/urgent|critical|emergency|asap|immediately|data loss|security breach/.test(text)) priority = 'Critical';
+    else if (/important|high|major|severe|broken|not working/.test(text)) priority = 'High';
+    else if (/question|inquiry|curious|wondering|when|how/.test(text)) priority = 'Low';
+
+    let sentiment = 'Neutral';
+    if (/frustrated|angry|terrible|worst|unacceptable/.test(text)) sentiment = 'Negative';
+    else if (/thank|great|happy|appreciate/.test(text)) sentiment = 'Positive';
+
+    document.getElementById('aiCategory').textContent = category;
+    document.getElementById('aiPriority').innerHTML = getPriorityBadge(priority);
+    document.getElementById('aiSentiment').innerHTML = getSentimentBadge(sentiment);
+    document.getElementById('aiRouting').textContent = `${category} Team`;
+    document.getElementById('aiConfidence').textContent = 'Heuristic preview (AI runs on submit)';
+    document.getElementById('aiPreview').style.display = 'block';
+  }
+
+  // File upload
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  let selectedFiles = [];
+
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    addFiles(Array.from(e.dataTransfer.files));
+  });
+  fileInput.addEventListener('change', () => addFiles(Array.from(fileInput.files)));
+
+  function addFiles(files) {
+    const newFiles = files.filter(f => !selectedFiles.find(sf => sf.name === f.name));
+    if (selectedFiles.length + newFiles.length > 5) {
+      Toast.warning('Too many files', 'Maximum 5 attachments per ticket');
+      return;
+    }
+    selectedFiles = [...selectedFiles, ...newFiles];
+    renderFileChips();
+  }
+
+  function removeFile(name) {
+    selectedFiles = selectedFiles.filter(f => f.name !== name);
+    renderFileChips();
+  }
+
+  function renderFileChips() {
+    const chips = document.getElementById('fileChips');
+    chips.innerHTML = selectedFiles.map(f => `
+      <div class="file-chip">
+        <span>${f.type.startsWith('image/') ? '🖼️' : '📄'}</span>
+        <span>${escapeHtml(f.name)}</span>
+        <span style="font-size:10px;color:var(--text-muted)">(${(f.size/1024).toFixed(0)}KB)</span>
+        <button onclick="removeFile('${escapeHtml(f.name)}')" type="button">✕</button>
+      </div>
+    `).join('');
+  }
+
+  // Form submit
+  document.getElementById('ticketForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const errorEl = document.getElementById('formError');
+    errorEl.style.display = 'none';
+
+    const title = document.getElementById('title').value.trim();
+    const description = document.getElementById('description').value.trim();
+    const category = document.getElementById('category').value;
+    const priority = document.getElementById('priority').value;
+
+    if (!title || !description) {
+      errorEl.textContent = 'Title and description are required.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading"></span> Submitting...';
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('description', description);
+    if (category) formData.append('category', category);
+    if (priority) formData.append('priority', priority);
+    selectedFiles.forEach(f => formData.append('attachments', f));
+
+    const res = await API.createTicket(formData);
+
+    if (res?.ok) {
+      Toast.success('Ticket created!', `#${res.data.data.ticketId} — AI has analyzed your request`);
+      setTimeout(() => window.location.href = `ticket-detail.html?id=${res.data.data._id}`, 1000);
+    } else {
+      errorEl.textContent = res?.data?.message || 'Failed to create ticket. Please try again.';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = '🎫 Submit Ticket';
+    }
+  });
+</script>
+</body>
+</html>
