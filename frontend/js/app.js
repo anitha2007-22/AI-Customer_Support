@@ -3,7 +3,12 @@
    API client, authentication, UI utilities
    ===================================================== */
 
-const API_BASE = 'http://localhost:5000/api';
+const RENDER_API_BASE = 'https://ai-customer-support-azdn.onrender.com/api';
+const API_BASE = window.API_BASE
+  || document.querySelector('meta[name="api-base"]')?.content
+  || (window.location.origin && window.location.origin !== 'null' ? `${window.location.origin}/api` : RENDER_API_BASE);
+const BACKEND_BASE = API_BASE.endsWith('/api') ? API_BASE.slice(0, -4) : API_BASE;
+const backendAsset = (path) => `${BACKEND_BASE}${path.startsWith('/') ? path : `/${path}`}`;
 
 /* ---- Local Storage Keys ---- */
 const KEYS = {
@@ -396,7 +401,7 @@ const App = {
       if (roleEl) roleEl.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
       if (avatarEl) {
         if (user.profileImage) {
-          avatarEl.innerHTML = `<img src="http://localhost:5000${user.profileImage}" alt="${user.name}">`;
+          avatarEl.innerHTML = `<img src="${backendAsset(user.profileImage)}" alt="${user.name}">`;
         } else {
           avatarEl.textContent = getInitials(user.name);
         }

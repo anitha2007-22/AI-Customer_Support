@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="api-base" content="http://localhost:5000/api">
   <title>Users — SupportDesk</title>
   <link rel="stylesheet" href="../css/main.css">
 </head>
@@ -172,7 +173,7 @@
         <td>
           <div style="display:flex;align-items:center;gap:10px">
             <div class="avatar avatar-sm" style="background:${getRoleColor(u.role)}">
-              ${u.profileImage ? `<img src="http://localhost:5000${u.profileImage}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : getInitials(u.name)}
+              ${u.profileImage ? `<img src="${backendAsset(u.profileImage)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : getInitials(u.name)}
             </div>
             <span style="font-weight:600">${escapeHtml(u.name)}</span>
           </div>

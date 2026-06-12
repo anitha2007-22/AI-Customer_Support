@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="api-base" content="http://localhost:5000/api">
   <title>Profile — SupportDesk</title>
   <link rel="stylesheet" href="../css/main.css">
 </head>
@@ -141,7 +142,7 @@
     // Avatar
     const avatarEl = document.getElementById('profileAvatarDisplay');
     if (u.profileImage) {
-      avatarEl.innerHTML = `<img src="http://localhost:5000${u.profileImage}" alt="${u.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      avatarEl.innerHTML = `<img src="${backendAsset(u.profileImage)}" alt="${u.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     } else {
       avatarEl.textContent = getInitials(u.name);
     }

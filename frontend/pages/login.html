@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="api-base" content="http://localhost:5000/api">
   <title>Sign In — SupportDesk</title>
   <link rel="stylesheet" href="../css/main.css">
   <style>
@@ -114,10 +115,11 @@
           </div>
         </div>
         <div id="loginError" class="form-error" style="margin-bottom:12px;display:none"></div>
-        <button type="submit" id="loginBtn" class="btn btn-primary" style="width:100%;padding:12px;font-size:15px">
+        <button type="button" id="loginBtn" class="btn btn-primary" style="width:100%;padding:12px;font-size:15px">
           Sign In
         </button>
       </form>
+    
 
       <div class="auth-footer">
         Don't have an account? <a href="register.html">Create one →</a>
@@ -143,7 +145,7 @@
     icon.textContent = input.type === 'password' ? '👁️' : '🙈';
   }
 
-  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  document.getElementById('loginBtn').addEventListener('click', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('loginBtn');
     const errorEl = document.getElementById('loginError');

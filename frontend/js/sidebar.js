@@ -46,7 +46,7 @@ function buildSidebar(role) {
 
   const nav = pages[role] || pages.customer;
   const avatarHtml = user.profileImage
-    ? `<img src="http://localhost:5000${user.profileImage}" alt="${user.name}">`
+    ? `<img src="${backendAsset(user.profileImage)}" alt="${user.name}">`
     : getInitials(user.name);
 
   const navHtml = nav.map(item => {

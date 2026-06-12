@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ticket Detail — SupportDesk</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <meta name="api-base" content="http://localhost:5000/api">  <title>Ticket Detail — SupportDesk</title>
   <link rel="stylesheet" href="../css/main.css">
 </head>
 <body>
@@ -154,7 +153,7 @@
                 <div style="font-size:13px;font-weight:600;margin-bottom:8px">Attachments</div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px">
                   ${t.attachments.map(a => `
-                    <a href="http://localhost:5000${a}" target="_blank" class="file-chip" style="text-decoration:none">
+                    <a href="${backendAsset(a)}" target="_blank" class="file-chip" style="text-decoration:none">
                       📎 ${a.split('/').pop()}
                     </a>
                   `).join('')}
@@ -335,7 +334,7 @@
             ${m.attachments?.length ? `
               <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
                 ${m.attachments.map(a => `
-                  <a href="http://localhost:5000${a}" target="_blank" class="file-chip" style="text-decoration:none">📎 ${a.split('/').pop()}</a>
+                  <a href="${backendAsset(a)}" target="_blank" class="file-chip" style="text-decoration:none">📎 ${a.split('/').pop()}</a>
                 `).join('')}
               </div>
             ` : ''}
