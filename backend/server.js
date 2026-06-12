@@ -1,4 +1,6 @@
 require('dotenv').config();
+process.env.JWT_SECRET = (process.env.JWT_SECRET || '').trim() || 'supportdesk_default_jwt_secret_2026';
+process.env.JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
