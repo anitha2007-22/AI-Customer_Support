@@ -56,14 +56,9 @@ const createApp = () => {
 
   // CORS
   const allowedOrigins = [
-    process.env.FRONTEND_URL || 'https://ai-customer-support-azdn.onrender.com/api',
-    'http://localhost:5500',
-    'http://127.0.0.1:5500',
-    'http://localhost:8080',
-    'http://127.0.0.1:3000',
-    'http://localhost:3000',
-    'http://localhost:5000',
-    'http://127.0.0.1:5000',
+  'https://ai-customer-support-1-62vn.onrender.com',
+  process.env.FRONTEND_URL,
+],
   ];
 
   app.use(cors({
