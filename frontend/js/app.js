@@ -38,7 +38,7 @@ const Auth = {
   isLoggedIn: () => !!localStorage.getItem(KEYS.TOKEN),
   redirectIfNotLoggedIn: () => {
     if (!Auth.isLoggedIn()) {
-      window.location.href = '/frontend/pages/login.html';
+      window.location.href = '/pages/login.html';
       return true;
     }
     return false;
@@ -53,9 +53,9 @@ const Auth = {
   },
   redirectToDashboard: (role) => {
     const routes = {
-      admin: '/frontend/pages/admin-dashboard.html',
-      agent: '/frontend/pages/agent-dashboard.html',
-      customer: '/frontend/pages/customer-dashboard.html',
+      admin: '/pages/admin-dashboard.html',
+      agent: '/pages/agent-dashboard.html',
+      customer: '/pages/customer-dashboard.html',
     };
     window.location.href = routes[role] || routes.customer;
   },
@@ -79,7 +79,7 @@ const API = {
       const json = await res.json();
       if (res.status === 401 && !endpoint.includes('/auth/')) {
         Auth.clearSession();
-        window.location.href = '/frontend/pages/login.html';
+        window.location.href = '/pages/login.html';
         return null;
       }
       return { ok: res.ok, status: res.status, data: json };
