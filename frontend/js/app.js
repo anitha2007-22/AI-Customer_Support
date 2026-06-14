@@ -4,7 +4,7 @@
    ===================================================== */
 
 const LOCAL_API_BASE = 'https://ai-customer-support-backend-mbta.onrender.com/api';
-const RENDER_API_BASE = 'https://ai-customer-support-azdn.onrender.com/api';
+const RENDER_API_BASE = 'https://ai-customer-support-backend-mbta.onrender.com/api';
 const inferredApiBase = window.location.origin && window.location.origin !== 'null'
   ? `${window.location.origin}/api`
   : LOCAL_API_BASE;
