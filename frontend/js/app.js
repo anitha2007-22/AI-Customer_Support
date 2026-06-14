@@ -443,7 +443,7 @@ const App = {
     document.querySelectorAll('.logout-btn, .sidebar-logout').forEach(btn => {
       btn.addEventListener('click', () => {
         Auth.clearSession();
-        window.location.href = '/frontend/pages/login.html';
+        window.location.href = '/pages/login.html';
       });
     });
 
