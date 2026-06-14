@@ -58,7 +58,7 @@ const createApp = () => {
   const allowedOrigins = [
   'https://ai-customer-support-1-62vn.onrender.com',
   process.env.FRONTEND_URL,
-],
+
   ];
 
   app.use(cors({
