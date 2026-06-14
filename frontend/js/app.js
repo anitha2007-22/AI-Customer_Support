@@ -38,7 +38,7 @@ const Auth = {
   isLoggedIn: () => !!localStorage.getItem(KEYS.TOKEN),
   redirectIfNotLoggedIn: () => {
     if (!Auth.isLoggedIn()) {
-      window.location.href = '/pages/login.html';
+      window.location.href = '/login.html';
       return true;
     }
     return false;
@@ -53,9 +53,9 @@ const Auth = {
   },
   redirectToDashboard: (role) => {
     const routes = {
-      admin: '/pages/admin-dashboard.html',
-      agent: '/pages/agent-dashboard.html',
-      customer: '/pages/customer-dashboard.html',
+      admin: '/admin-dashboard.html',
+      agent: '/agent-dashboard.html',
+      customer: '/customer-dashboard.html',
     };
     window.location.href = routes[role] || routes.customer;
   },
