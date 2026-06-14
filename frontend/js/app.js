@@ -38,7 +38,7 @@ const Auth = {
   isLoggedIn: () => !!localStorage.getItem(KEYS.TOKEN),
   redirectIfNotLoggedIn: () => {
     if (!Auth.isLoggedIn()) {
-      window.location.href = '/pages/login.html';
+      window.location.href = '/frontend/pages/login.html';
       return true;
     }
     return false;
@@ -79,7 +79,7 @@ const API = {
       const json = await res.json();
       if (res.status === 401 && !endpoint.includes('/auth/')) {
         Auth.clearSession();
-        window.location.href = '/pages/login.html';
+        window.location.href = '/frontend/pages/login.html';
         return null;
       }
       return { ok: res.ok, status: res.status, data: json };
