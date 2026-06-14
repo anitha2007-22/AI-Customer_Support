@@ -3,10 +3,14 @@
    API client, authentication, UI utilities
    ===================================================== */
 
+const LOCAL_API_BASE = 'http://127.0.0.1:5000/api';
 const RENDER_API_BASE = 'https://ai-customer-support-azdn.onrender.com/api';
+const inferredApiBase = window.location.origin && window.location.origin !== 'null'
+  ? `${window.location.origin}/api`
+  : LOCAL_API_BASE;
 const API_BASE = window.API_BASE
   || document.querySelector('meta[name="api-base"]')?.content
-  || (window.location.origin && window.location.origin !== 'null' ? `${window.location.origin}/api` : RENDER_API_BASE);
+  || inferredApiBase;
 const BACKEND_BASE = API_BASE.endsWith('/api') ? API_BASE.slice(0, -4) : API_BASE;
 const backendAsset = (path) => `${BACKEND_BASE}${path.startsWith('/') ? path : `/${path}`}`;
 
