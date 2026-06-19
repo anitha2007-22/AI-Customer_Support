@@ -4,6 +4,9 @@ A production-quality, full-stack support ticketing platform powered by Google Ge
 
 ---
 
+Live Demo:
+https://ai-customer-support-ticketing.lovable.app/
+
 ## 📸 Features
 
 ### 🤖 AI-Powered
